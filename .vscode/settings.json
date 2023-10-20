@@ -5,6 +5,7 @@
   "solidity.formatter": "forge",
   "search.exclude": { "lib": true },
   "files.associations": {
+    ".dapprc": "shellscript",
     ".gas-snapshot": "julia"
   }
 }
