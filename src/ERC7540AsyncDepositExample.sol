@@ -98,8 +98,6 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
         shares = _claimableDeposit[msg.sender].shares;
         delete _claimableDeposit[msg.sender];
 
-        _totalPendingAssets -= assets;
-
         transfer(receiver, shares);
 
         emit Deposit(msg.sender, receiver, assets, shares);
@@ -111,8 +109,6 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
 
         assets = _claimableDeposit[msg.sender].assets;
         delete _claimableDeposit[msg.sender];
-
-        _totalPendingAssets -= assets;
 
         transfer(receiver, shares);
 
