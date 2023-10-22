@@ -49,7 +49,7 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
                         ERC7540 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice TODO
+    /// @notice this deposit request is added to any pending deposit request
     function requestDeposit(uint256 assets, address operator) public {
         require(assets != 0, "ZERO_ASSETS");
 
