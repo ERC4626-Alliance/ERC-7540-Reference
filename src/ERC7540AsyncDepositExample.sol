@@ -63,8 +63,8 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
         emit DepositRequest(msg.sender, operator, assets);
     }
 
-    function pendingDepositRequest(address operator) public view returns (uint256 shares) {
-        shares = _pendingDeposit[operator].assets;
+    function pendingDepositRequest(address operator) public view returns (uint256 assets) {
+        assets = _pendingDeposit[operator].assets;
     }
 
     /*//////////////////////////////////////////////////////////////
