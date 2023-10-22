@@ -20,14 +20,20 @@ import "solmate/auth/Owned.sol";
 contract ERC7540AsyncDepositExample is ERC4626, Owned {
     using SafeTransferLib for ERC20;
 
-    mapping(address => DepositRequest) internal _pendingDeposit;
+    mapping(address => PendingDeposit) internal _pendingDeposit;
+    mapping(address => ClaimableDeposit) internal _claimableDeposit;
     uint256 internal _totalPendingAssets;
 
-    struct DepositRequest {
+    struct PendingDeposit {
+        uint256 assets;
+    }
+
+    struct ClaimableDeposit {
         uint256 assets;
         uint256 shares;
-        uint32 claimableTimestamp;
     }
+
+    event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
 
     constructor(
         ERC20 _asset,
@@ -51,18 +57,35 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
 
         asset.safeTransferFrom(msg.sender, address(this), assets);
 
-        // TODO
+        uint256 currentPendingAssets = _pendingDeposit[operator].assets;
+        _pendingDeposit[operator] = PendingDeposit(assets + currentPendingAssets);
+
+        _totalPendingAssets += assets;
+
+        emit DepositRequest(msg.sender, operator, assets);
     }
 
     function pendingDepositRequest(address operator) public view returns (uint256 shares) {
-        // TODO
+        shares = _pendingDeposit[operator].assets;
     }
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT FULFILLMENT LOGIC
     //////////////////////////////////////////////////////////////*/
-    function fulfillDeposit(address operator) public onlyOwner {
-        // TODO
+    function fulfillDeposit(address operator) public onlyOwner returns (uint256 shares) {
+        PendingDeposit memory request = _pendingDeposit[operator];
+
+        require(request.assets != 0, "ZERO_ASSETS");
+
+        shares = convertToShares(request.assets);
+        _mint(address(this), shares);
+
+        uint256 currentClaimableAssets = _claimableDeposit[operator].assets;
+        uint256 currentClaimableShares = _claimableDeposit[operator].shares;
+        _claimableDeposit[operator] = ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
+
+        delete _pendingDeposit[operator];
+        _totalPendingAssets -= request.assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -73,31 +96,53 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
         uint256 assets,
         address receiver
     ) public override returns (uint256 shares) {
-        // TODO
+        // The maxWithdraw call checks that assets are claimable
+        require(assets != 0 && assets == maxDeposit(msg.sender), "Must claim nonzero maximum");
+
+        shares = _claimableDeposit[msg.sender].shares;
+        delete _claimableDeposit[msg.sender];
+
+        _totalPendingAssets -= assets;
+
+        transfer(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     function mint(
         uint256 shares,
         address receiver
     ) public override returns (uint256 assets) {
-        // TODO
+        // The maxWithdraw call checks that shares are claimable
+        require(shares != 0 && shares == maxMint(msg.sender), "Must claim nonzero maximum");
+
+        assets = _claimableDeposit[msg.sender].assets;
+        delete _claimableDeposit[msg.sender];
+
+        _totalPendingAssets -= assets;
+
+        transfer(receiver, shares);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
     }
 
     function maxDeposit(address operator) public view override returns (uint256) {
-        // TODO
+        ClaimableDeposit memory claimable = _claimableDeposit[operator];
+        return claimable.assets;
     }
 
     function maxMint(address operator) public view override returns (uint256) {
-        // TODO
+        ClaimableDeposit memory claimable = _claimableDeposit[operator];
+        return claimable.shares;
     }
 
     // Preview functions always revert for async flows
 
-    function previewDeposit(uint256) public view override returns (uint256) {
+    function previewDeposit(uint256) public pure override returns (uint256) {
         revert ();
     }
 
-    function previewMint(uint256) public view override returns (uint256) {
+    function previewMint(uint256) public pure override returns (uint256) {
         revert ();
     }
 
