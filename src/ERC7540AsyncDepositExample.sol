@@ -7,13 +7,13 @@ import "solmate/auth/Owned.sol";
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
 /**
- * @notice ERC7540 Implementing Controlled Async Deposits 
- * 
+ * @notice ERC7540 Implementing Controlled Async Deposits
+ *
  *     This Vault has the following properties:
  *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
  *     - async deposits are subject to approval by an owner account
- *     - users can only deposit the maximum amount. 
- *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims. 
+ *     - users can only deposit the maximum amount.
+ *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
 contract ERC7540AsyncDepositExample is ERC4626, Owned {
