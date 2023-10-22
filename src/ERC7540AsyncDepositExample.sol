@@ -6,17 +6,16 @@ import "solmate/auth/Owned.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
-
-/** 
-@notice ERC7540 Implementing Controlled Async Deposits 
-
-    This Vault has the following properties:
-    - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
-    - async deposits are subject to approval by an owner account
-    - users can only deposit the maximum amount. 
-        To allow partial claims, the deposit and mint functions would need to allow for pro rata claims. 
-        Conversions between claimable assets/shares should be checked for rounding safety.
-*/
+/**
+ * @notice ERC7540 Implementing Controlled Async Deposits 
+ * 
+ *     This Vault has the following properties:
+ *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
+ *     - async deposits are subject to approval by an owner account
+ *     - users can only deposit the maximum amount. 
+ *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims. 
+ *         Conversions between claimable assets/shares should be checked for rounding safety.
+ */
 contract ERC7540AsyncDepositExample is ERC4626, Owned {
     using SafeTransferLib for ERC20;
 
@@ -35,11 +34,10 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
 
     event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
 
-    constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol
-    ) ERC4626(_asset, _name, _symbol) Owned(msg.sender) {}
+    constructor(ERC20 _asset, string memory _name, string memory _symbol)
+        ERC4626(_asset, _name, _symbol)
+        Owned(msg.sender)
+    {}
 
     function totalAssets() public view override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
@@ -82,7 +80,8 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
 
         uint256 currentClaimableAssets = _claimableDeposit[operator].assets;
         uint256 currentClaimableShares = _claimableDeposit[operator].shares;
-        _claimableDeposit[operator] = ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
+        _claimableDeposit[operator] =
+            ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
 
         delete _pendingDeposit[operator];
         _totalPendingAssets -= request.assets;
@@ -92,10 +91,7 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(
-        uint256 assets,
-        address receiver
-    ) public override returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) public override returns (uint256 shares) {
         // The maxWithdraw call checks that assets are claimable
         require(assets != 0 && assets == maxDeposit(msg.sender), "Must claim nonzero maximum");
 
@@ -109,10 +105,7 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
 
-    function mint(
-        uint256 shares,
-        address receiver
-    ) public override returns (uint256 assets) {
+    function mint(uint256 shares, address receiver) public override returns (uint256 assets) {
         // The maxWithdraw call checks that shares are claimable
         require(shares != 0 && shares == maxMint(msg.sender), "Must claim nonzero maximum");
 
@@ -139,11 +132,10 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
     // Preview functions always revert for async flows
 
     function previewDeposit(uint256) public pure override returns (uint256) {
-        revert ();
+        revert();
     }
 
     function previewMint(uint256) public pure override returns (uint256) {
-        revert ();
+        revert();
     }
-
 }
