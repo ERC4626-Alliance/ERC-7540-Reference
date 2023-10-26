@@ -7,16 +7,16 @@ import {IERC7540Redeem, IERC165} from "./interfaces/IERC7540Redeem.sol";
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
 /**
- * @notice ERC7540 Implementing Delayed Async Withdrawals 
- * 
+ * @notice ERC7540 Implementing Delayed Async Withdrawals
+ *
  *     This Vault has the following properties:
  *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
  *     - async redemptions are subject to a 3 day delay
- *     - new redemptions restart the 3 day delay even if the prior redemption is claimable. 
+ *     - new redemptions restart the 3 day delay even if the prior redemption is claimable.
  *         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
  *     - the redemption exchange rate is locked in immediately upon request.
- *     - users can only redeem the maximum amount. 
- *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims. 
+ *     - users can only redeem the maximum amount.
+ *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
 contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
