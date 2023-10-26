@@ -31,6 +31,7 @@ contract ERC7540AsyncRedeemExample is ERC4626 {
     }
 
     uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
+event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
 
     constructor(
         ERC20 _asset,
