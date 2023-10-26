@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import "solmate/mixins/ERC4626.sol";
 import "solmate/auth/Owned.sol";
+import {IERC7540Deposit, IERC165} from "./interfaces/IERC7540Deposit.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -16,7 +17,7 @@ import "solmate/auth/Owned.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncDepositExample is ERC4626, Owned {
+contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
     using SafeTransferLib for ERC20;
 
     mapping(address => PendingDeposit) internal _pendingDeposit;
@@ -31,8 +32,6 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
         uint256 assets;
         uint256 shares;
     }
-
-    event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
 
     constructor(ERC20 _asset, string memory _name, string memory _symbol)
         ERC4626(_asset, _name, _symbol)
@@ -65,6 +64,10 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned {
 
     function pendingDepositRequest(address operator) public view returns (uint256 assets) {
         assets = _pendingDeposit[operator].assets;
+    }
+
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC7540Deposit).interfaceId;
     }
 
     /*//////////////////////////////////////////////////////////////

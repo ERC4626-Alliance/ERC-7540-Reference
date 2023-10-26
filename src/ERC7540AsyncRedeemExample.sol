@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 import "solmate/mixins/ERC4626.sol";
+import {IERC7540Redeem, IERC165} from "./interfaces/IERC7540Redeem.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -19,7 +20,7 @@ import "solmate/mixins/ERC4626.sol";
         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims. 
         Conversions between claimable assets/shares should be checked for rounding safety.
 */
-contract ERC7540AsyncRedeemExample is ERC4626 {
+contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
 
     mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
@@ -31,8 +32,6 @@ contract ERC7540AsyncRedeemExample is ERC4626 {
     }
 
     uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
-
-event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
 
     constructor(
         ERC20 _asset,
@@ -82,6 +81,10 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         if (request.claimableTimestamp > block.timestamp) {
             return request.shares;
         }
+    }
+
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -135,6 +138,8 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         if (request.claimableTimestamp <= block.timestamp) {
             return request.assets;
         }
+
+        return 0;
     }
 
     function maxRedeem(address operator) public view override returns (uint256) {
@@ -144,6 +149,8 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         if (request.claimableTimestamp <= block.timestamp) {
             return request.shares;
         }
+
+        return 0;
     }
 
     // Preview functions always revert for async flows
