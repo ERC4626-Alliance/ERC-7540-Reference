@@ -31,6 +31,7 @@ contract ERC7540AsyncRedeemExample is ERC4626 {
     }
 
     uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
+
 event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
 
     constructor(
@@ -69,6 +70,8 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         _pendingRedemption[operator] = RedemptionRequest(assets + currentPendingAssets, shares + currentPendingShares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS);
 
         _totalPendingAssets += assets;
+        
+        emit RedeemRequest(msg.sender, operator, owner, shares);
     }
 
     function pendingRedeemRequest(address operator) public view returns (uint256 shares) {
@@ -145,11 +148,11 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
 
     // Preview functions always revert for async flows
 
-    function previewWithdraw(uint256) public view override returns (uint256) {
+    function previewWithdraw(uint256) public pure override returns (uint256) {
         revert ();
     }
 
-    function previewRedeem(uint256) public view override returns (uint256) {
+    function previewRedeem(uint256) public pure override returns (uint256) {
         revert ();
     }
 
