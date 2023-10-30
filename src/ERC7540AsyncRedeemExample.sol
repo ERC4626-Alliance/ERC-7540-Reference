@@ -125,8 +125,6 @@ contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
         if (request.claimableTimestamp <= block.timestamp) {
             return request.assets;
         }
-
-        return 0;
     }
 
     function maxRedeem(address operator) public view override returns (uint256) {
@@ -136,8 +134,6 @@ contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
         if (request.claimableTimestamp <= block.timestamp) {
             return request.shares;
         }
-
-        return 0;
     }
 
     // Preview functions always revert for async flows
