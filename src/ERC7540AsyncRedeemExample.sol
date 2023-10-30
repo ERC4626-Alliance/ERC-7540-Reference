@@ -79,7 +79,8 @@ contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
     }
 
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId;
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
+            || interfaceId == type(ERC4626).interfaceId;
     }
 
     /*//////////////////////////////////////////////////////////////
