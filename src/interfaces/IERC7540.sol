@@ -22,6 +22,18 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
+interface IERC7540Base {
+    // Required
+    function ownerOf(uint256 rid);
+
+    function claimRequest(uint256 rid, address to);
+
+    // Not strictly required
+    function creatorOf(uint256 rid);
+
+    function transferRequest(uint256 rid, address to);
+}
+
 interface IERC7540Deposit {
     event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
 
@@ -33,7 +45,7 @@ interface IERC7540Deposit {
      *
      * NOTE: most implementations will require pre-approval of the Vault with the Vault's underlying asset token.
      */
-    function requestDeposit(uint256 assets, address operator) external;
+    function requestDeposit(uint256 assets, address operator) external returns (uint256 rid);
 
     /**
      * @dev Returns the amount of requested assets in Pending state for the operator to deposit or mint.
@@ -42,7 +54,7 @@ interface IERC7540Deposit {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function pendingDepositRequest(address operator) external view returns (uint256 assets);
+    function pendingDepositRequest(uint256 rid) external view returns (uint256 assets);
 }
 
 interface IERC7540Redeem {
@@ -55,7 +67,7 @@ interface IERC7540Redeem {
      *   where msg.sender has ERC-20 approval over the shares of owner.
      * - MUST revert if all of shares cannot be requested for redeem / withdraw.
      */
-    function requestRedeem(uint256 shares, address operator, address owner) external;
+    function requestRedeem(uint256 shares, address operator, address owner) external returns (uint256 rid);
 
     /**
      * @dev Returns the amount of requested shares in Pending state for the operator to redeem or withdraw.
@@ -64,7 +76,7 @@ interface IERC7540Redeem {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function pendingRedeemRequest(address operator) external view returns (uint256 shares);
+    function pendingRedeemRequest(uint256 rid) external view returns (uint256 shares);
 }
 
 /**
@@ -72,4 +84,4 @@ interface IERC7540Redeem {
  * @dev    Interface of the ERC7540 "Asynchronous Tokenized Vault Standard", as defined in
  *         https://github.com/ethereum/EIPs/blob/2e63f2096b0c7d8388458bb0a03a7ce0eb3422a4/EIPS/eip-7540.md[ERC-7540].
  */
-interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC4626, IERC165 {}
+interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC7540Base, IERC4626, IERC165 {}
