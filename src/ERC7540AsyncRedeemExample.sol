@@ -22,6 +22,7 @@ import "solmate/mixins/ERC4626.sol";
 contract ERC7540AsyncRedeemExample is ERC4626 {
 
     mapping(address => RedemptionRequest) internal _pendingRedemption;
+    mapping(address => mapping(address => bool)) public endorsements;
     uint256 internal _totalPendingAssets;
 
     struct RedemptionRequest {
@@ -93,7 +94,7 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         address receiver,
         address operator
     ) public override returns (uint256 shares) {
-        require(msg.sender == operator, "Sender must be operator");
+        require(msg.sender == operator || endorsements[operator][msg.sender], "Sender must be owner or endorsed");
         // The maxWithdraw call checks that assets are claimable
         require(assets != 0 && assets == maxWithdraw(operator), "Must claim nonzero maximum");
 
@@ -112,7 +113,7 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         address receiver,
         address operator
     ) public override returns (uint256 assets) {
-        require(msg.sender == operator, "Sender must be operator");
+        require(msg.sender == operator || endorsements[operator][msg.sender], "Sender must be owner or endorsed");
         // The maxWithdraw call checks that assets are claimable
         require(shares != 0 && shares == maxRedeem(operator), "Must claim nonzero maximum");
 
