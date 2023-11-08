@@ -2,25 +2,24 @@
 pragma solidity 0.8.15;
 
 import "solmate/mixins/ERC4626.sol";
+import {IERC7540Redeem, IERC165} from "./interfaces/IERC7540Redeem.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
-
-/** 
-@notice ERC7540 Implementing Delayed Async Withdrawals 
-
-    This Vault has the following properties:
-    - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
-    - async redemptions are subject to a 3 day delay
-    - new redemptions restart the 3 day delay even if the prior redemption is claimable. 
-        This can be resolved by using a more sophisticated algorithm for storing multiple requests.
-    - the redemption exchange rate is locked in immediately upon request.
-    - users can only redeem the maximum amount. 
-        To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims. 
-        Conversions between claimable assets/shares should be checked for rounding safety.
-*/
-contract ERC7540AsyncRedeemExample is ERC4626 {
-
+/**
+ * @notice ERC7540 Implementing Delayed Async Withdrawals
+ *
+ *     This Vault has the following properties:
+ *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
+ *     - async redemptions are subject to a 3 day delay
+ *     - new redemptions restart the 3 day delay even if the prior redemption is claimable.
+ *         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
+ *     - the redemption exchange rate is locked in immediately upon request.
+ *     - users can only redeem the maximum amount.
+ *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
+ *         Conversions between claimable assets/shares should be checked for rounding safety.
+ */
+contract ERC7540AsyncRedeemExample is ERC4626, IERC7540Redeem {
     mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
 
@@ -32,13 +31,7 @@ contract ERC7540AsyncRedeemExample is ERC4626 {
 
     uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
 
-event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
-
-    constructor(
-        ERC20 _asset,
-        string memory _name,
-        string memory _symbol
-    ) ERC4626(_asset, _name, _symbol) {}
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) ERC4626(_asset, _name, _symbol) {}
 
     function totalAssets() public view override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
@@ -64,13 +57,14 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
 
         _burn(owner, shares);
 
-
         uint256 currentPendingShares = _pendingRedemption[operator].shares;
         uint256 currentPendingAssets = _pendingRedemption[operator].assets;
-        _pendingRedemption[operator] = RedemptionRequest(assets + currentPendingAssets, shares + currentPendingShares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS);
+        _pendingRedemption[operator] = RedemptionRequest(
+            assets + currentPendingAssets, shares + currentPendingShares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS
+        );
 
         _totalPendingAssets += assets;
-        
+
         emit RedeemRequest(msg.sender, operator, owner, shares);
     }
 
@@ -84,15 +78,16 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         }
     }
 
+    function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC7540Redeem).interfaceId
+            || interfaceId == type(ERC4626).interfaceId;
+    }
+
     /*//////////////////////////////////////////////////////////////
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(
-        uint256 assets,
-        address receiver,
-        address operator
-    ) public override returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address operator) public override returns (uint256 shares) {
         require(msg.sender == operator, "Sender must be operator");
         // The maxWithdraw call checks that assets are claimable
         require(assets != 0 && assets == maxWithdraw(operator), "Must claim nonzero maximum");
@@ -107,11 +102,7 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
         emit Withdraw(msg.sender, receiver, operator, assets, shares);
     }
 
-    function redeem(
-        uint256 shares,
-        address receiver,
-        address operator
-    ) public override returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address operator) public override returns (uint256 assets) {
         require(msg.sender == operator, "Sender must be operator");
         // The maxWithdraw call checks that assets are claimable
         require(shares != 0 && shares == maxRedeem(operator), "Must claim nonzero maximum");
@@ -149,11 +140,10 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
     // Preview functions always revert for async flows
 
     function previewWithdraw(uint256) public pure override returns (uint256) {
-        revert ();
+        revert();
     }
 
     function previewRedeem(uint256) public pure override returns (uint256) {
-        revert ();
+        revert();
     }
-
 }
