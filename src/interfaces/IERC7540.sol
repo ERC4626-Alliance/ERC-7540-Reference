@@ -22,7 +22,7 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-inerface IERC7540DepositReceiver {
+interface IERC7540DepositReceiver {
 // inspired by https://eips.ethereum.org/EIPS/eip-721
 
     /// @notice Handle the receipt of an deposit Request
