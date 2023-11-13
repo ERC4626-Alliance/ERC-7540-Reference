@@ -22,30 +22,65 @@ interface IERC165 {
     function supportsInterface(bytes4 interfaceId) external view returns (bool);
 }
 
-interface IERC7540Base {
-    // Required
-    function ownerOf(uint256 rid);
+inerface IERC7540DepositReceiver {
+// inspired by https://eips.ethereum.org/EIPS/eip-721
 
-    function claimRequest(uint256 rid, address to);
-
-    // Not strictly required
-    function creatorOf(uint256 rid);
-
-    function transferRequest(uint256 rid, address to);
+    /// @notice Handle the receipt of an deposit Request
+    /// @dev The ERC7540 smart contract calls this function on the recipient
+    ///  after a `transfer`. This function MAY throw to revert and reject the
+    ///  transfer. Return of other than the magic value MUST result in the
+    ///  transaction being reverted.
+    ///  Note: the contract address is always the message sender.
+    /// @param _operator The address which called `safeTransferFrom` function
+    /// @param _from The address which previously owned the deposit (or message sender)
+    /// @param _ridId The RID identifier which is being transferred
+    /// @param _data Additional data with no specified format
+    /// @return `bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)"))`
+    ///  unless throwing
+    function onERC7540DepositReceived(address _operator, address _from, uint256 _ridId, bytes _data) external returns(bytes4);
 }
 
 interface IERC7540Deposit {
     event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
 
     /**
-     * @dev Transfers assets from msg.sender into the Vault and submits a Request for asynchronous deposit/mint.
+     * @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit/mint.
      *
      * - MUST support ERC-20 approve / transferFrom on asset as a deposit Request flow.
      * - MUST revert if all of assets cannot be requested for deposit/mint.
      *
+     * @param assets the amount of deposit assets from sender
+     * @param receiver the receiver of the request who will be able to operate the request
+     * @param sender the source of the deposit assets
+     * @param bytes additional data which may be used to approve or call the receiver contract
+     * 
+     * NOTE: most implementations will require pre-approval of the Vault with the Vault's underlying asset token.
+     * 
+     * Behavior, if data is nonzero, attempt to call the receiver onERC7540DepositReceiver otherwise just send the request to the receiver
+     * sender MUST = msg.sender unless some unspecified explicit approval is given by the caller, approval of ERC7540 vault shares is NOT enough.
+     */
+    function requestDeposit(uint256 assets, address receiver, address sender, bytes calldata data) external returns (uint256 rid);
+
+    /**
+     * @dev Claims a deposit request and sends associated shares to the receiver
+     *
+     * @param rid the requestId of the deposit request
+     * @param receiver the receiver of the claim who will receive the shares output
+     * 
+     * @returns shares the amount of shares actually received by the claim
+     */
+    function claimDeposit(uint256 rid, address receiver) external returns (uint256 shares);
+
+    /**
+     * @dev Transfers a deposit request to the receiver
+     *
+     * @param rid the id of the deposit request to transfer
+     * @param receiver the receiver of the request who will be able to operate the request
+     * @param bytes additional data which may be used to approve or call the receiver contract
+     * 
      * NOTE: most implementations will require pre-approval of the Vault with the Vault's underlying asset token.
      */
-    function requestDeposit(uint256 assets, address operator) external returns (uint256 rid);
+    function transferDepositRequest(uint256 rid, address receiver, bytes calldata data);
 
     /**
      * @dev Returns the amount of requested assets in Pending state for the operator to deposit or mint.
@@ -84,4 +119,10 @@ interface IERC7540Redeem {
  * @dev    Interface of the ERC7540 "Asynchronous Tokenized Vault Standard", as defined in
  *         https://github.com/ethereum/EIPs/blob/2e63f2096b0c7d8388458bb0a03a7ce0eb3422a4/EIPS/eip-7540.md[ERC-7540].
  */
-interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC7540Base, IERC4626, IERC165 {}
+interface IERC7540 is IERC7540Deposit, IERC7540Redeem, IERC4626, IERC165 {
+    /**
+     * @dev returns the owner of a given request by requestId
+     * Note: the rid MUST be unique for any given caller but not necessarily any given request. I.e. Rid may be an alias for `owner` OR it may uniquely identify a request. Contracts must be able to handle both cases.
+     * 
+    function ownerOf(uint256 rid);
+}
