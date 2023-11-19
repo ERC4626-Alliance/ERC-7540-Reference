@@ -21,10 +21,13 @@ import "solmate/mixins/ERC4626.sol";
 */
 contract ERC7540AsyncRedeemExample is ERC4626 {
 
-    mapping(address => RedemptionRequest) internal _pendingRedemption;
+    mapping(uint256 => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
+    
+    uint256 public ids;
 
     struct RedemptionRequest {
+        address operator;
         uint256 assets;
         uint256 shares;
         uint32 claimableTimestamp;
@@ -52,7 +55,7 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
 
     /// @notice this redemption request locks in the current exchange rate, restarts the withdrawal timelock delay, and increments any outstanding request
     /// NOTE: if there is an outstanding claimable request, users benefit from claiming before requesting again
-    function requestRedeem(uint256 shares, address operator, address owner) public {
+    function requestRedeem(uint256 shares, address operator, address owner) public returns (uint id) {
         if (msg.sender != owner) {
             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
 
@@ -64,24 +67,37 @@ event RedeemRequest(address indexed sender, address indexed operator, address in
 
         _burn(owner, shares);
 
+        id = ids++;
 
-        uint256 currentPendingShares = _pendingRedemption[operator].shares;
-        uint256 currentPendingAssets = _pendingRedemption[operator].assets;
-        _pendingRedemption[operator] = RedemptionRequest(assets + currentPendingAssets, shares + currentPendingShares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS);
+        _pendingRedemption[id] = RedemptionRequest(operator, assets, shares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS);
 
         _totalPendingAssets += assets;
         
         emit RedeemRequest(msg.sender, operator, owner, shares);
     }
 
-    function pendingRedeemRequest(address operator) public view returns (uint256 shares) {
-        RedemptionRequest memory request = _pendingRedemption[operator];
+    function pendingRedeemRequest(uint256 id) public view returns (uint256 shares) {
+        RedemptionRequest memory request = _pendingRedemption[id];
 
         // If the claimable timestamp is in the future, return the pending shares
         // Otherwise return 0 as all are claimable
         if (request.claimableTimestamp > block.timestamp) {
             return request.shares;
         }
+    }
+
+    function ownerOf(uint256 rid) public view returns (address) {
+        return _pendingRedemption[rid].operator;
+    }
+
+    function transferRequest(uint256 rid, address to) public view returns (address) {
+        require (msg.sender == ownerOf(rid)); // Can optionally add additional approval/validation logic here
+
+        _pendingRedemption[id].operator = to;
+    }
+
+    function claimRequest(uint256 rid, address to) public view returns (address) {
+        redeem(_pendingRedemption[rid].shares, to, _pendingRedemption[rid].operator);
     }
 
     /*//////////////////////////////////////////////////////////////
