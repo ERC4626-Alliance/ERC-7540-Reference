@@ -135,7 +135,7 @@ interface IERC7540Redeem {
      *   where msg.sender has ERC-20 approval over the shares of owner.
      * - MUST revert if all of shares cannot be requested for redeem.
      *
-     * @param shares the amount of redemption shares to transfer from owner
+     * @param shares the amount of shares to be redeemed to transfer from owner
      * @param receiver the receiver of the request who will be able to operate the request
      * @param owner the source of the redemption shares
      * @param data additional bytes which may be used to approve or call the receiver contract
