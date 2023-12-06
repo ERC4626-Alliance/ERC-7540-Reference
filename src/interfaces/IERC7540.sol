@@ -137,7 +137,7 @@ interface IERC7540Redeem {
      *
      * @param shares the amount of shares to be redeemed to transfer from owner
      * @param receiver the receiver of the request who will be able to operate the request
-     * @param owner the source of the redemption shares
+     * @param owner the source of the shares to be redeemed```
      * @param data additional bytes which may be used to approve or call the receiver contract
      *
      * NOTE: most implementations will require pre-approval of the Vault with the Vault's share token.
