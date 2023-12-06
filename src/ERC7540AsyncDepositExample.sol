@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.15;
 
 import "solmate/mixins/ERC4626.sol";
 import "solmate/auth/Owned.sol";
