@@ -94,18 +94,7 @@ interface IERC7540Deposit {
     function requestDeposit(uint256 assets, address receiver, address owner, bytes calldata data)
         external
         returns (uint256 rid);
-
-    /**
-     * @dev Claims a deposit request and sends associated shares to the receiver
-     *
-     * @param rid the requestId of the deposit request
-     * @param receiver the receiver of the claim who will receive the shares output
-     * @param owner the owner of the request
-     *
-     * @return shares the amount of shares actually received by the claim
-     */
-    function claimDepositRequest(uint256 rid, address receiver, address owner) external returns (uint256 shares);
-
+    
     /**
      * @dev Returns the amount of requested assets in Pending state.
      *
@@ -148,17 +137,6 @@ interface IERC7540Redeem {
     function requestRedeem(uint256 shares, address receiver, address owner, bytes calldata data)
         external
         returns (uint256 rid);
-
-    /**
-     * @dev Claims a redeem request and sends associated assets to the receiver
-     *
-     * @param rid the requestId of the request
-     * @param receiver the receiver of the claim who will receive the assets output
-     * @param owner the owner of the request
-     *
-     * @return assets the amount of assets actually received by the claim
-     */
-    function claimRedeemRequest(uint256 rid, address receiver, address owner) external returns (uint256 assets);
 
     /**
      * @dev Returns the amount of requested shares in Pending state.
