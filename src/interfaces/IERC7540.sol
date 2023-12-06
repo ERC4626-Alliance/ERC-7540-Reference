@@ -23,83 +23,100 @@ interface IERC165 {
 }
 
 interface IERC7540DepositReceiver {
-    /// @notice Handle the receipt of an deposit Request
-    /// @dev The ERC7540 smart contract calls this function on the recipient
-    ///  after a `requestDeposit`. This function MAY throw to revert and reject the
-    ///  request. Return of other than the magic value MUST result in the
-    ///  transaction being reverted.
-    ///  Inspired by https://eips.ethereum.org/EIPS/eip-721
-    ///  Note: the contract address is always the message sender.
-    /// @param _operator The address which called `requestDeposit` function
-    /// @param _sender The address which funded the `asssets` of the Request (or message sender)
-    /// @param _receiver The owner of this Request
-    /// @param _requestId The RID identifier of the Request which is being received
-    /// @param _data Additional data with no specified format
-    /// @return `bytes4(keccak256("onERC7540DepositReceived(address,address,address,uint256,bytes)"))`
-    ///  unless throwing
-    function onERC7540DepositReceived(address _operator, address _sender, address _receiver, uint256 _requestId, bytes _data) external returns(bytes4);
+    /**
+     * @dev Handle the receipt of a deposit Request
+     *
+     * The ERC7540 smart contract calls this function on the recipient
+     * after a `requestDeposit`. This function MAY throw to revert and reject the
+     * request. Return of other than the magic value MUST result in the
+     * transaction being reverted.
+     * Inspired by https://eips.ethereum.org/EIPS/eip-721
+     *
+     * Note: the contract address is always the message sender.
+     *
+     * @param _operator The address which called `requestDeposit` function
+     * @param _sender The address which funded the `assets` of the Request (or message sender)
+     * @param _requestId The RID identifier of the Request which is being received
+     * @param _data Additional data with no specified format
+     * @return `bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)"))`
+     *  unless throwing
+     */
+    function onERC7540DepositReceived(address _operator, address _sender, uint256 _requestId, bytes memory _data)
+        external
+        returns (bytes4);
 }
 
 interface IERC7540RedeemReceiver {
-    /// @notice Handle the receipt of a Redeem Request
-    /// @dev The ERC7540 smart contract calls this function on the recipient
-    ///  after a `requestRedeem`. This function MAY throw to revert and reject the
-    ///  request. Return of other than the magic value MUST result in the
-    ///  transaction being reverted.
-    ///  Inspired by https://eips.ethereum.org/EIPS/eip-721
-    ///  Note: the contract address is always the message sender.
-    /// @param _operator The address which called `requestRedeem` function
-    /// @param _sender The address which funded the `shares` of the Request (or message sender)
-    /// @param _receiver The owner of this Request
-    /// @param _requestId The RID identifier of the Request which is being received
-    /// @param _data Additional data with no specified format
-    /// @return `bytes4(keccak256("onERC7540RedeemReceived(address,address,address,uint256,bytes)"))`
-    ///  unless throwing
-    function onERC7540RedeemReceived(address _operator, address _sender, address _receiver, uint256 _requestId, bytes _data) external returns(bytes4);
+    /**
+     * @dev Handle the receipt of a redeem Request
+     *
+     * The ERC7540 smart contract calls this function on the recipient
+     * after a `requestRedeem`. This function MAY throw to revert and reject the
+     * request. Return of other than the magic value MUST result in the
+     * transaction being reverted.
+     * Inspired by https://eips.ethereum.org/EIPS/eip-721
+     *
+     * Note: the contract address is always the message sender.
+     *
+     * @param _operator The address which called `requestRedeem` function
+     * @param _sender The address which funded the `shares` of the Request (or message sender)
+     * @param _requestId The RID identifier of the Request which is being received
+     * @param _data Additional data with no specified format
+     * @return `bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)"))`
+     *  unless throwing
+     */
+    function onERC7540RedeemReceived(address _operator, address _sender, uint256 _requestId, bytes memory _data)
+        external
+        returns (bytes4);
 }
 
 interface IERC7540Deposit {
-    event DepositRequest(address indexed sender, address indexed operator, uint256 assets);
+    event DepositRequest(address indexed sender, address indexed receiver, address indexed owner, uint256 assets);
 
     /**
-     * @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit/mint.
+     * @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit.
      *
      * - MUST support ERC-20 approve / transferFrom on asset as a deposit Request flow.
-     * - MUST revert if all of assets cannot be requested for deposit/mint.
-     * - sender MUST = msg.sender unless some unspecified explicit approval is given by the caller, approval of ERC7540 vault shares is NOT enough.
+     * - MUST revert if all of assets cannot be requested for deposit.
+     * - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,
+     *    approval of ERC-20 tokens from owner to sender is NOT enough.
      *
-     * @param assets the amount of deposit assets from sender
+     * @param assets the amount of deposit assets to transfer from owner
      * @param receiver the receiver of the request who will be able to operate the request
-     * @param sender the source of the deposit assets
-     * @param bytes additional data which may be used to approve or call the receiver contract
-     * 
+     * @param owner the source of the deposit assets
+     * @param data additional bytes which may be used to approve or call the receiver contract
+     *
      * NOTE: most implementations will require pre-approval of the Vault with the Vault's underlying asset token.
-     * 
-     * Behavior, if data is nonzero, attempt to call the receiver onERC7540DepositReceived otherwise just send the request to the receiver
+     *
+     * If data is nonzero, attempt to call the receiver onERC7540DepositReceived,
+     * otherwise just send the request to the receiver
      */
-    function requestDeposit(uint256 assets, address receiver, address sender, bytes calldata data) external returns (uint256 rid);
+    function requestDeposit(uint256 assets, address receiver, address owner, bytes calldata data)
+        external
+        returns (uint256 rid);
 
     /**
      * @dev Claims a deposit request and sends associated shares to the receiver
      *
      * @param rid the requestId of the deposit request
      * @param receiver the receiver of the claim who will receive the shares output
-     * 
+     * @param owner the owner of the request
+     *
      * @return shares the amount of shares actually received by the claim
      */
-    function claimDeposit(uint256 rid, address receiver, address owner) external returns (uint256 shares);
+    function claimDepositRequest(uint256 rid, address receiver, address owner) external returns (uint256 shares);
 
     /**
-     * @dev Returns the amount of requested assets in Pending state for the operator to deposit or mint.
+     * @dev Returns the amount of requested assets in Pending state.
      *
      * - MUST NOT include any assets in Claimable state for deposit or mint.
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
     function pendingDepositRequest(uint256 rid, address owner) external view returns (uint256 pendingAssets);
-    
+
     /**
-     * @dev Returns the amount of requested assets in Claimable state for the operator to deposit or mint.
+     * @dev Returns the amount of requested assets in Claimable state for the owner to deposit or mint.
      *
      * - MUST NOT include any assets in Pending state for deposit or mint.
      * - MUST NOT show any variations depending on the caller.
@@ -109,39 +126,42 @@ interface IERC7540Deposit {
 }
 
 interface IERC7540Redeem {
-    event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
+    event RedeemRequest(address indexed sender, address indexed receiver, address indexed owner, uint256 shares);
 
     /**
-     * @dev Assumes control of shares from sender into the Vault and submits a Request for asynchronous redeem/withdraw.
-     * 
-     * - MUST support a redeem Request flow where the control of shares is taken from owner directly
-     *   where msg.sender has ERC-20 approval over the shares of owner.
-     * - MUST revert if all of shares cannot be requested for redeem / withdraw.
-     * - sender MUST = msg.sender unless some unspecified explicit approval is given by the caller, approval of ERC7540 vault shares is NOT enough.
+     * @dev Assumes control of shares from sender into the Vault and submits a Request for asynchronous redeem.
      *
-     * @param shares the amount of redemption shares from sender
+     * - MUST support a redeem Request flow where the control of shares is taken from sender directly
+     *   where msg.sender has ERC-20 approval over the shares of owner.
+     * - MUST revert if all of shares cannot be requested for redeem.
+     *
+     * @param shares the amount of shares to be redeemed to transfer from owner
      * @param receiver the receiver of the request who will be able to operate the request
-     * @param sender the source of the redemption shares
-     * @param bytes additional data which may be used to approve or call the receiver contract
-     * 
+     * @param owner the source of the shares to be redeemed```
+     * @param data additional bytes which may be used to approve or call the receiver contract
+     *
      * NOTE: most implementations will require pre-approval of the Vault with the Vault's share token.
-     * 
-     * Behavior, if data is nonzero, attempt to call the receiver onERC7540RedeemReceived otherwise just send the request to the receiver
+     *
+     * If data is nonzero, attempt to call the receiver onERC7540RedeemReceived,
+     * otherwise just send the request to the receiver
      */
-    function requestRedeem(uint256 shares, address receiver, address sender, bytes calldata data) external returns (uint256 rid);
+    function requestRedeem(uint256 shares, address receiver, address owner, bytes calldata data)
+        external
+        returns (uint256 rid);
 
     /**
      * @dev Claims a redeem request and sends associated assets to the receiver
      *
      * @param rid the requestId of the request
      * @param receiver the receiver of the claim who will receive the assets output
-     * 
+     * @param owner the owner of the request
+     *
      * @return assets the amount of assets actually received by the claim
      */
-    function claimRedemption(uint256 rid, address receiver, address owner) external returns (uint256 assets);
+    function claimRedeemRequest(uint256 rid, address receiver, address owner) external returns (uint256 assets);
 
     /**
-     * @dev Returns the amount of requested shares in Pending state for the operator to redeem or withdraw.
+     * @dev Returns the amount of requested shares in Pending state.
      *
      * - MUST NOT include any shares in Claimable state for redeem or withdraw.
      * - MUST NOT show any variations depending on the caller.
@@ -150,7 +170,7 @@ interface IERC7540Redeem {
     function pendingRedeemRequest(uint256 rid, address owner) external view returns (uint256 pendingShares);
 
     /**
-     * @dev Returns the amount of requested shares in Claimable state for the operator to redeem or withdraw.
+     * @dev Returns the amount of requested shares in Claimable state for the owner to redeem or withdraw.
      *
      * - MUST NOT include any shares in Pending state for redeem or withdraw.
      * - MUST NOT show any variations depending on the caller.
