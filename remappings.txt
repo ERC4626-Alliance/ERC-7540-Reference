@@ -2,3 +2,4 @@
 solmate/=lib/solmate/src/
 ERC4626/=lib/ERC4626/src/
 ds-test/=lib/ds-test/src/
+std/=lib/forge-std/src/
