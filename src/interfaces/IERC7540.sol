@@ -71,7 +71,7 @@ interface IERC7540RedeemReceiver {
 }
 
 interface IERC7540Deposit {
-    event DepositRequest(address indexed receiver, address indexed owner, uint256 indexed requestId, address sender, uint256 assets;
+    event DepositRequest(address indexed receiver, address indexed owner, uint256 indexed requestId, address sender, uint256 assets);
 
     /**
      * @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit.
