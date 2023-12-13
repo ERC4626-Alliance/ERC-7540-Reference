@@ -35,7 +35,7 @@ interface IERC7540DepositReceiver {
      * Note: the contract address is always the message sender.
      *
      * @param _operator The address which called `requestDeposit` function
-     * @param _sender The address which funded the `assets` of the Request (or message sender)
+     * @param _owner The address which funded the `assets` of the Request (or message sender)
      * @param _requestId The RID identifier of the Request which is being received
      * @param _data Additional data with no specified format
      * @return `bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)"))`
