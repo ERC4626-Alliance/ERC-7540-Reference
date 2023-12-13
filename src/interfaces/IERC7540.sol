@@ -41,7 +41,7 @@ interface IERC7540DepositReceiver {
      * @return `bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)"))`
      *  unless throwing
      */
-    function onERC7540DepositReceived(address _operator, address _sender, uint256 _requestId, bytes memory _data)
+    function onERC7540DepositReceived(address _operator, address _owner, uint256 _requestId, bytes memory _data)
         external
         returns (bytes4);
 }
@@ -59,19 +59,19 @@ interface IERC7540RedeemReceiver {
      * Note: the contract address is always the message sender.
      *
      * @param _operator The address which called `requestRedeem` function
-     * @param _sender The address which funded the `shares` of the Request (or message sender)
+     * @param _owner The address which funded the `shares` of the Request (or message sender)
      * @param _requestId The RID identifier of the Request which is being received
      * @param _data Additional data with no specified format
      * @return `bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)"))`
      *  unless throwing
      */
-    function onERC7540RedeemReceived(address _operator, address _sender, uint256 _requestId, bytes memory _data)
+    function onERC7540RedeemReceived(address _operator, address _owner, uint256 _requestId, bytes memory _data)
         external
         returns (bytes4);
 }
 
 interface IERC7540Deposit {
-    event DepositRequest(address indexed sender, address indexed receiver, address indexed owner, uint256 assets);
+    event DepositRequest(address indexed receiver, address indexed owner, uint256 indexed requestId, address sender, uint256 assets;
 
     /**
      * @dev Transfers assets from sender into the Vault and submits a Request for asynchronous deposit.
@@ -93,7 +93,7 @@ interface IERC7540Deposit {
      */
     function requestDeposit(uint256 assets, address receiver, address owner, bytes calldata data)
         external
-        returns (uint256 rid);
+        returns (uint256 requestId);
     
     /**
      * @dev Returns the amount of requested assets in Pending state.
@@ -102,7 +102,7 @@ interface IERC7540Deposit {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function pendingDepositRequest(uint256 rid, address owner) external view returns (uint256 pendingAssets);
+    function pendingDepositRequest(uint256 requestId, address owner) external view returns (uint256 pendingAssets);
 
     /**
      * @dev Returns the amount of requested assets in Claimable state for the owner to deposit or mint.
@@ -111,11 +111,11 @@ interface IERC7540Deposit {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function claimableDepositRequest(uint256 rid, address owner) external view returns (uint256 claimableAssets);
+    function claimableDepositRequest(uint256 requestId, address owner) external view returns (uint256 claimableAssets);
 }
 
 interface IERC7540Redeem {
-    event RedeemRequest(address indexed sender, address indexed receiver, address indexed owner, uint256 shares);
+    event RedeemRequest(address indexed receiver, address indexed owner, uint256 indexed requestId, address sender, uint256 assets);
 
     /**
      * @dev Assumes control of shares from sender into the Vault and submits a Request for asynchronous redeem.
@@ -136,7 +136,7 @@ interface IERC7540Redeem {
      */
     function requestRedeem(uint256 shares, address receiver, address owner, bytes calldata data)
         external
-        returns (uint256 rid);
+        returns (uint256 requestId);
 
     /**
      * @dev Returns the amount of requested shares in Pending state.
@@ -145,7 +145,7 @@ interface IERC7540Redeem {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function pendingRedeemRequest(uint256 rid, address owner) external view returns (uint256 pendingShares);
+    function pendingRedeemRequest(uint256 requestId, address owner) external view returns (uint256 pendingShares);
 
     /**
      * @dev Returns the amount of requested shares in Claimable state for the owner to redeem or withdraw.
@@ -154,7 +154,7 @@ interface IERC7540Redeem {
      * - MUST NOT show any variations depending on the caller.
      * - MUST NOT revert unless due to integer overflow caused by an unreasonably large input.
      */
-    function claimableRedeemRequest(uint256 rid, address owner) external view returns (uint256 claimableShares);
+    function claimableRedeemRequest(uint256 requestId, address owner) external view returns (uint256 claimableShares);
 }
 
 /**
