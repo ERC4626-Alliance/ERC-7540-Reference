@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity 0.8.21;
+pragma solidity ^0.8.15;
 
 import {IERC20Metadata} from "./IERC20.sol";
 
