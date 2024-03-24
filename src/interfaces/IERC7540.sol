@@ -158,19 +158,19 @@ interface IERC7540Redeem {
 }
 
 interface IERC7540CancelDeposit {
-    event CancelDepositRequest(
-        address indexed owner, uint256 indexed requestId, address sender
+    event CancelDepositRequest(address indexed owner, uint256 indexed requestId, address sender);
+    event ClaimCancelDepositRequest(
+        address indexed sender, address indexed receiver, address indexed owner, uint256 assets
     );
 
     /**
      * @dev Submits a Request for cancelling the pending deposit Request
-     
+     *
      * - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from owner to sender is NOT enough.
      * - MUST set pendingCancelDepositRequest to `true` for the returned requestId after request
      * - MUST increase claimableCancelDepositRequest for the returned requestId after fulfillment
      * - SHOULD be claimable using `claimCancelDepositRequest`
-
      * Note: while `pendingCancelDepositRequest` is `true`, `requestDeposit` cannot be called
      */
     function cancelDepositRequest(uint256 requestId, address owner) external;
@@ -191,32 +191,32 @@ interface IERC7540CancelDeposit {
         external
         view
         returns (uint256 claimableAssets);
-    
+
     /**
      * @dev Claims the canceled deposit assets, and removes the pending cancelation Request
-     
+     *
      * - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from owner to sender is NOT enough.
      * - MUST set pendingCancelDepositRequest to `false` for the returned requestId after request
      * - MUST set claimableCancelDepositRequest to 0 for the returned requestId after fulfillment
      */
-    function claimCancelDepositRequest(uint256 requestId, address owner) external;
+    function claimCancelDepositRequest(uint256 requestId, address receiver, address owner) external returns (uint256 assets);
 }
 
 interface IERC7540CancelRedeem {
-    event CancelRedeemRequest(
-        address indexed owner, uint256 indexed requestId, address sender
+    event CancelRedeemRequest(address indexed owner, uint256 indexed requestId, address sender);
+    event ClaimCancelRedeemRequest(
+        address indexed sender, address indexed receiver, address indexed owner, uint256 shares
     );
 
     /**
      * @dev Submits a Request for cancelling the pending redeem Request
-     
+     *
      * - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from owner to sender is NOT enough.
      * - MUST set pendingCancelRedeemRequest to `true` for the returned requestId after request
      * - MUST increase claimableCancelRedeemRequest for the returned requestId after fulfillment
      * - SHOULD be claimable using `claimCancelRedeemRequest`
-
      * Note: while `pendingCancelRedeemRequest` is `true`, `requestRedeem` cannot be called
      */
     function cancelRedeemRequest(uint256 requestId, address owner) external;
@@ -237,16 +237,16 @@ interface IERC7540CancelRedeem {
         external
         view
         returns (uint256 claimableShares);
-    
+
     /**
      * @dev Claims the canceled redeem shares, and removes the pending cancelation Request
-     
+     *
      * - owner MUST be msg.sender unless some unspecified explicit approval is given by the caller,
      *    approval of ERC-20 tokens from owner to sender is NOT enough.
      * - MUST set pendingCancelRedeemRequest to `false` for the returned requestId after request
      * - MUST set claimableCancelRedeemRequest to 0 for the returned requestId after fulfillment
      */
-    function claimCancelRedeemRequest(uint256 requestId, address owner) external;
+    function claimCancelRedeemRequest(uint256 requestId, address receiver, address owner) external returns (uint256 shares);
 }
 
 /**
