@@ -2,7 +2,7 @@
 pragma solidity ^0.8.15;
 
 import "forge-std/Test.sol";
-import {IERC7540Deposit, IERC7540Redeem, IERC7540DepositReceiver, IERC7540RedeemReceiver} from "src/interfaces/IERC7540.sol";
+import {IERC7540Deposit, IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 
 contract TestInterfaceFunctionSelectors is Test {
   
@@ -20,9 +20,9 @@ contract TestInterfaceFunctionSelectors is Test {
         bytes4 erc7540DepositReceiver = 0xe74d2a41;
         bytes4 erc7540RedeemReceiver = 0x0102fde4;
 
-        assertEq(type(IERC7540DepositReceiver).interfaceId, erc7540DepositReceiver);
-        assertEq(type(IERC7540DepositReceiver).interfaceId, bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)")));
-        assertEq(type(IERC7540RedeemReceiver).interfaceId, erc7540RedeemReceiver);
-        assertEq(type(IERC7540RedeemReceiver).interfaceId, bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)")));
+        // assertEq(type(IERC7540DepositReceiver).interfaceId, erc7540DepositReceiver);
+        // assertEq(type(IERC7540DepositReceiver).interfaceId, bytes4(keccak256("onERC7540DepositReceived(address,address,uint256,bytes)")));
+        // assertEq(type(IERC7540RedeemReceiver).interfaceId, erc7540RedeemReceiver);
+        // assertEq(type(IERC7540RedeemReceiver).interfaceId, bytes4(keccak256("onERC7540RedeemReceived(address,address,uint256,bytes)")));
     }
 }
