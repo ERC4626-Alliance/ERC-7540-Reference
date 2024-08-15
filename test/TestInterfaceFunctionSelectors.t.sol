@@ -5,8 +5,6 @@ import "forge-std/Test.sol";
 import {IERC7540Deposit, IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 
 contract TestInterfaceFunctionSelectors is Test {
-  
-
     // --- erc165 checks ---
     function testERC165InterfaceSelectors() public {
         bytes4 erc7540Deposit = 0xce3bbe50;

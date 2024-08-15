@@ -42,11 +42,11 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
         uint32 claimableTimestamp;
     }
 
-    event Withdraw(address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares);
+    event Withdraw(
+        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
+    );
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol)
-        Owned(msg.sender)
-    {
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) Owned(msg.sender) {
         share = address(new ShareToken(_name, _symbol, 18));
         asset = address(_asset);
     }
@@ -160,8 +160,7 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
 
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Redeem).interfaceId
-            || interfaceId == type(IERC7540Operator).interfaceId
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
             || interfaceId == type(IERC165).interfaceId;
     }
 

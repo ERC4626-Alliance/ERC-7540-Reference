@@ -1,7 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {IERC7540Vault, IERC7540Deposit, IERC7540Redeem, IERC7540Operator, IERC7540CancelDeposit, IERC7540CancelRedeem, IERC7575, IERC7741, IERC7714} from "src/interfaces/IERC7540.sol";
+import {
+    IERC7540Vault,
+    IERC7540Deposit,
+    IERC7540Redeem,
+    IERC7540Operator,
+    IERC7540CancelDeposit,
+    IERC7540CancelRedeem,
+    IERC7575,
+    IERC7741,
+    IERC7714
+} from "src/interfaces/IERC7540.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -45,9 +55,7 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, Owned {
 
     event Deposit(address indexed owner, address indexed receiver, uint256 assets, uint256 shares);
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol)
-        Owned(msg.sender)
-    {
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) Owned(msg.sender) {
         share = address(new ShareToken(_name, _symbol, 18));
         asset = address(_asset);
     }
@@ -82,7 +90,6 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, Owned {
     function pendingDepositRequest(uint256, address controller) public view returns (uint256 pendingAssets) {
         pendingAssets = _pendingDeposit[controller].assets;
     }
-
 
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT FULFILLMENT LOGIC
