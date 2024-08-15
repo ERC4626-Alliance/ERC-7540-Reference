@@ -87,20 +87,20 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, Owned {
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT FULFILLMENT LOGIC
     //////////////////////////////////////////////////////////////*/
-    function fulfillDeposit(address operator) public onlyOwner returns (uint256 shares) {
-        PendingDeposit memory request = _pendingDeposit[operator];
+    function fulfillDeposit(address controller) public onlyOwner returns (uint256 shares) {
+        PendingDeposit memory request = _pendingDeposit[controller];
 
         require(request.assets != 0, "ZERO_ASSETS");
 
         shares = convertToShares(request.assets);
         ShareToken(share).mint(address(this), shares);
 
-        uint256 currentClaimableAssets = _claimableDeposit[operator].assets;
-        uint256 currentClaimableShares = _claimableDeposit[operator].shares;
-        _claimableDeposit[operator] =
+        uint256 currentClaimableAssets = _claimableDeposit[controller].assets;
+        uint256 currentClaimableShares = _claimableDeposit[controller].shares;
+        _claimableDeposit[controller] =
             ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
 
-        delete _pendingDeposit[operator];
+        delete _pendingDeposit[controller];
         _totalPendingAssets -= request.assets;
     }
 
@@ -120,11 +120,11 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, Owned {
     //////////////////////////////////////////////////////////////*/
 
     function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
-        // The maxWithdraw call checks that assets are claimable
-        require(assets != 0 && assets == maxDeposit(msg.sender), "Must claim nonzero maximum");
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(assets != 0 && assets == maxDeposit(controller), "Must claim nonzero maximum");
 
-        shares = _claimableDeposit[msg.sender].shares;
-        delete _claimableDeposit[msg.sender];
+        shares = _claimableDeposit[controller].shares;
+        delete _claimableDeposit[controller];
 
         ShareToken(share).transfer(receiver, shares);
 
@@ -132,11 +132,11 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, Owned {
     }
 
     function mint(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
-        // The maxWithdraw call checks that shares are claimable
-        require(shares != 0 && shares == maxMint(msg.sender), "Must claim nonzero maximum");
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(shares != 0 && shares == maxMint(controller), "Must claim nonzero maximum");
 
-        assets = _claimableDeposit[msg.sender].assets;
-        delete _claimableDeposit[msg.sender];
+        assets = _claimableDeposit[controller].assets;
+        delete _claimableDeposit[controller];
 
         ShareToken(share).transfer(receiver, shares);
 
