@@ -79,7 +79,7 @@ contract ERC7540AsyncDepositExampleTest is Test {
         uint256 shares = vault.deposit(depositAmount, user, user);
 
         assertEq(shares, depositAmount, "Received shares should equal deposit amount");
-        assertEq(ERC20(vault.share()).balanceOf(user), shares, "User should receive correct number of shares");
+        assertEq(ERC20(vault).balanceOf(user), shares, "User should receive correct number of shares");
     }
 
     function testOperatorRequestDeposit() public {
@@ -130,6 +130,6 @@ contract ERC7540AsyncDepositExampleTest is Test {
         vm.stopPrank();
 
         assertEq(shares, depositAmount, "Shares should equal deposit amount");
-        assertEq(ERC20(vault.share()).balanceOf(user), shares, "User should receive correct number of shares");
+        assertEq(ERC20(vault).balanceOf(user), shares, "User should receive correct number of shares");
     }
 }

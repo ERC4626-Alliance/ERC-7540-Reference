@@ -19,20 +19,19 @@ contract ERC7540AsyncRedeemExampleTest is Test {
         owner = address(this);
         user = makeAddr("user");
 
-        // Deploy USDC and deal some to the vault
+        // Deploy USDC and deal some to the user
         asset = new USDC();
-        deal(address(asset), address(this), initialAssetBalance);
+        deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new ERC7540AsyncRedeemExample(USDC(address(asset)), "Vault Share", "vMTK");
-        shareToken = ERC20(vault.share());
+        vault = new ERC7540AsyncRedeemExample(asset, "Vault Share", "TEST");
+        shareToken = ERC20(address(vault));
 
-        // Transfer assets to the vault
-        asset.transfer(address(vault), initialAssetBalance);
-
-        // Deal share tokens to the user (simulating a previous deposit)
-        vm.prank(owner);
-        deal(address(shareToken), user, initialAssetBalance);
+        // Deposit assets to the vault
+        vm.startPrank(user);
+        asset.approve(address(vault), initialAssetBalance);
+        vault.deposit(initialAssetBalance, user);
+        vm.stopPrank();
     }
 
     function testRequestRedeem() public {

@@ -8,8 +8,8 @@ import {IERC165} from "src/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
-import {ShareToken} from "src/tokens/ShareToken.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {console} from "forge-std/console.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -27,7 +27,6 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
-    address public immutable share;
     uint8 internal immutable _shareDecimals;
 
     mapping(address => PendingDeposit) internal _pendingDeposit;
@@ -47,10 +46,7 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
     constructor(ERC20 _asset, string memory _name, string memory _symbol)
         Owned(msg.sender)
         ERC4626(_asset, _name, _symbol)
-    {
-        asset = _asset;
-
-    }
+    {}
 
     function totalAssets() public view override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
@@ -88,11 +84,10 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
     //////////////////////////////////////////////////////////////*/
     function fulfillDeposit(address controller) public onlyOwner returns (uint256 shares) {
         PendingDeposit memory request = _pendingDeposit[controller];
-
         require(request.assets != 0, "ZERO_ASSETS");
 
         shares = convertToShares(request.assets);
-        ShareToken(share).mint(address(this), shares);
+        _mint(address(this), shares);
 
         uint256 currentClaimableAssets = _claimableDeposit[controller].assets;
         uint256 currentClaimableShares = _claimableDeposit[controller].shares;
@@ -125,7 +120,7 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
         shares = _claimableDeposit[controller].shares;
         delete _claimableDeposit[controller];
 
-        ShareToken(share).transfer(receiver, shares);
+        ERC20(address(this)).transfer(receiver, shares);
 
         emit Deposit(receiver, controller, assets, shares);
     }
@@ -137,14 +132,32 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
         assets = _claimableDeposit[controller].assets;
         delete _claimableDeposit[controller];
 
-        ShareToken(share).transfer(receiver, shares);
+        // Use transfer instead of _transfer
+        ERC20(address(this)).transfer(receiver, shares);
 
         emit Deposit(receiver, controller, assets, shares);
+    }
+
+    function maxDeposit(address owner) public view override returns (uint256) {
+        return _claimableDeposit[owner].assets;
+    }
+
+    function maxMint(address owner) public view override returns (uint256) {
+        return _claimableDeposit[owner].shares;
     }
 
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC165).interfaceId
             || interfaceId == type(IERC4626).interfaceId;
+    }
+
+    // preview functions always revert for async flows
+    function previewDeposit(uint256 assets) public pure override returns (uint256 shares) {
+        revert("ERC7540Vault/async-flow");
+    }
+
+    function previewMint(uint256 shares) public pure override returns (uint256 assets) {
+        revert("ERC7540Vault/async-flow");
     }
 }

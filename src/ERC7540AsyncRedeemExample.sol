@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {IERC7540Redeem, IERC7540Operator} from "src/interfaces/IERC7540.sol";
+import {IERC7540Redeem} from "src/interfaces/IERC7540.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
-import {ShareToken} from "src/tokens/ShareToken.sol";
+
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -23,12 +25,11 @@ import {ShareToken} from "src/tokens/ShareToken.sol";
  *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
+contract ERC7540AsyncRedeemExample is IERC7540Redeem, ERC4626, Owned {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
-    address public immutable asset;
-    address public immutable share;
+    uint8 internal immutable _shareDecimals;
 
     mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
@@ -42,16 +43,12 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
         uint32 claimableTimestamp;
     }
 
-    event Withdraw(
-        address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
-    );
+    constructor(ERC20 _asset, string memory _name, string memory _symbol)
+        Owned(msg.sender)
+        ERC4626(_asset, _name, _symbol)
+    {}
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol) Owned(msg.sender) {
-        share = address(new ShareToken(_name, _symbol, 18));
-        asset = address(_asset);
-    }
-
-    function totalAssets() public view returns (uint256) {
+    function totalAssets() public view override returns (uint256) {
         return ERC20(asset).balanceOf(address(this)) - _totalPendingAssets;
     }
 
@@ -61,12 +58,12 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
 
     function requestRedeem(uint256 shares, address controller, address owner) external returns (uint256 requestId) {
         require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-owner");
-        require(ERC20(share).balanceOf(owner) >= shares, "ERC7540Vault/insufficient-balance");
+        require(ERC20(address(this)).balanceOf(owner) >= shares, "ERC7540Vault/insufficient-balance");
         require(shares != 0, "ZERO_SHARES");
 
         uint256 assets = convertToAssets(shares);
 
-        SafeTransferLib.safeTransferFrom(share, owner, address(this), shares);
+        SafeTransferLib.safeTransferFrom(address(this), owner, address(this), shares);
 
         _pendingRedemption[controller] = RedemptionRequest({
             assets: assets,
@@ -107,42 +104,42 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
-        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(assets != 0 && assets == maxWithdraw(controller), "Must claim nonzero maximum");
+    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
+        require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-caller");
+        require(assets != 0 && assets == maxWithdraw(owner), "Must claim nonzero maximum");
 
-        RedemptionRequest storage request = _pendingRedemption[controller];
+        RedemptionRequest storage request = _pendingRedemption[owner];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
         shares = request.shares;
         uint256 claimableAssets = request.assets;
 
-        delete _pendingRedemption[controller];
+        delete _pendingRedemption[owner];
         _totalPendingAssets -= claimableAssets;
 
-        SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
+        SafeTransferLib.safeTransfer(address(asset), receiver, claimableAssets);
 
-        emit Withdraw(msg.sender, receiver, controller, claimableAssets, shares);
+        emit Withdraw(msg.sender, receiver, owner, claimableAssets, shares);
     }
 
-    function redeem(uint256 shares, address receiver, address controller) public returns (uint256 assets) {
-        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(shares != 0 && shares == maxRedeem(controller), "Must claim nonzero maximum");
+    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
+        require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-caller");
+        require(shares != 0 && shares == maxRedeem(owner), "Must claim nonzero maximum");
 
-        RedemptionRequest storage request = _pendingRedemption[controller];
+        RedemptionRequest storage request = _pendingRedemption[owner];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
         assets = request.assets;
 
-        delete _pendingRedemption[controller];
+        delete _pendingRedemption[owner];
         _totalPendingAssets -= assets;
 
-        SafeTransferLib.safeTransfer(asset, receiver, assets);
+        SafeTransferLib.safeTransfer(address(asset), receiver, assets);
 
-        emit Withdraw(msg.sender, receiver, controller, assets, shares);
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }
 
-    function maxWithdraw(address controller) public view returns (uint256) {
+    function maxWithdraw(address controller) public view override returns (uint256) {
         RedemptionRequest memory request = _pendingRedemption[controller];
         if (request.claimableTimestamp <= block.timestamp) {
             return request.assets;
@@ -150,7 +147,7 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
         return 0;
     }
 
-    function maxRedeem(address controller) public view returns (uint256) {
+    function maxRedeem(address controller) public view override returns (uint256) {
         RedemptionRequest memory request = _pendingRedemption[controller];
         if (request.claimableTimestamp <= block.timestamp) {
             return request.shares;
@@ -160,21 +157,16 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, Owned {
 
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC7540Operator).interfaceId
-            || interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
+            || interfaceId == type(IERC4626).interfaceId;
     }
 
     // Preview functions always revert for async flows
-
-    function previewWithdraw(uint256) public pure returns (uint256) {
-        revert();
+    function previewWithdraw(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
     }
 
-    function previewRedeem(uint256) public pure returns (uint256) {
-        revert();
-    }
-
-    function convertToAssets(uint256 shares) public pure returns (uint256) {
-        return shares;
+    function previewRedeem(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
     }
 }
