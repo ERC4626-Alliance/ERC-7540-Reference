@@ -18,7 +18,7 @@ contract ERC7540AsyncRedeemExampleTest is Test {
     function setUp() public {
         owner = address(this);
         user = makeAddr("user");
-        
+
         // Deploy USDC and deal some to the vault
         asset = new USDC();
         deal(address(asset), address(this), initialAssetBalance);
@@ -37,7 +37,7 @@ contract ERC7540AsyncRedeemExampleTest is Test {
 
     function testRequestRedeem() public {
         uint256 redeemAmount = 100e6;
-        
+
         vm.startPrank(user);
         shareToken.approve(address(vault), redeemAmount);
         uint256 requestId = vault.requestRedeem(redeemAmount, user, user);
@@ -46,13 +46,17 @@ contract ERC7540AsyncRedeemExampleTest is Test {
         assertEq(requestId, 0, "Request ID should be 0");
         assertEq(vault.pendingRedeemRequest(0, user), redeemAmount, "Pending redeem should match requested amount");
         assertEq(vault.claimableRedeemRequest(0, user), 0, "Claimable redeem should be 0");
-        assertEq(shareToken.balanceOf(user), initialAssetBalance - redeemAmount, "User should have less shares than initial balance");
+        assertEq(
+            shareToken.balanceOf(user),
+            initialAssetBalance - redeemAmount,
+            "User should have less shares than initial balance"
+        );
         assertEq(shareToken.balanceOf(address(vault)), redeemAmount, "Vault should have received share amount");
     }
 
     function testClaimableRedeemAfterDelay() public {
         uint256 redeemAmount = 100e6;
-        
+
         vm.startPrank(user);
         shareToken.approve(address(vault), redeemAmount);
         vault.requestRedeem(redeemAmount, user, user);
@@ -61,13 +65,17 @@ contract ERC7540AsyncRedeemExampleTest is Test {
         // Fast forward 3 days
         vm.warp(block.timestamp + 3 days);
 
-        assertEq(vault.claimableRedeemRequest(0, user), redeemAmount, "Claimable redeem should match requested amount after delay");
+        assertEq(
+            vault.claimableRedeemRequest(0, user),
+            redeemAmount,
+            "Claimable redeem should match requested amount after delay"
+        );
     }
 
     function testWithdraw() public {
         uint256 redeemAmount = 100e6;
         uint256 expectedAssets = 100e6; // 100 USDC
-        
+
         vm.startPrank(user);
         shareToken.approve(address(vault), redeemAmount);
         vault.requestRedeem(redeemAmount, user, user);
@@ -87,7 +95,7 @@ contract ERC7540AsyncRedeemExampleTest is Test {
     function testRedeem() public {
         uint256 redeemAmount = 100e6;
         uint256 expectedAssets = 100e6; // 100 USDC
-        
+
         vm.startPrank(user);
         shareToken.approve(address(vault), redeemAmount);
         vault.requestRedeem(redeemAmount, user, user);
@@ -107,23 +115,27 @@ contract ERC7540AsyncRedeemExampleTest is Test {
     function testOperatorRequestRedeem() public {
         uint256 redeemAmount = 100e6;
         address operator = makeAddr("operator");
-        
+
         // User approves the operator
         vm.prank(user);
         vault.setOperator(operator, true);
-        
+
         // User approves the vault to spend their shares
         vm.prank(user);
         shareToken.approve(address(vault), redeemAmount);
-        
+
         // Operator requests redeem on behalf of the user
         vm.prank(operator);
         uint256 requestId = vault.requestRedeem(redeemAmount, user, user);
-        
+
         assertEq(requestId, 0, "Request ID should be 0");
         assertEq(vault.pendingRedeemRequest(0, user), redeemAmount, "Pending redeem should match requested amount");
         assertEq(vault.claimableRedeemRequest(0, user), 0, "Claimable redeem should be 0");
-        assertEq(shareToken.balanceOf(user), initialAssetBalance - redeemAmount, "User should have less shares than initial balance");
+        assertEq(
+            shareToken.balanceOf(user),
+            initialAssetBalance - redeemAmount,
+            "User should have less shares than initial balance"
+        );
         assertEq(shareToken.balanceOf(address(vault)), redeemAmount, "Vault should have received share amount");
     }
 
@@ -131,7 +143,7 @@ contract ERC7540AsyncRedeemExampleTest is Test {
         uint256 redeemAmount = 100e6;
         uint256 expectedAssets = 100e6; // 100 USDC
         address operator = makeAddr("operator");
-        
+
         // User sets operator and approves the vault
         vm.startPrank(user);
         vault.setOperator(operator, true);
