@@ -8,7 +8,6 @@ import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 
-
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
 /**
@@ -155,8 +154,7 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC7575).interfaceId
-            || interfaceId == type(IERC7540Operator).interfaceId;
+            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
     }
 
     // Preview functions always revert for async flows
