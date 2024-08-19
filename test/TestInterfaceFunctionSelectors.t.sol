@@ -4,7 +4,6 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 import {IERC7540Deposit, IERC7540Redeem, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {ERC7540AsyncDepositExample} from "src/ERC7540AsyncDepositExample.sol";
 import {ERC7540AsyncRedeemExample} from "src/ERC7540AsyncRedeemExample.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -25,7 +24,6 @@ contract TestInterfaceFunctionSelectors is Test {
         assertEq(type(IERC7540Redeem).interfaceId, erc7540Redeem);
         assertEq(type(IERC7540Operator).interfaceId, erc7540Operator);
         assertEq(type(IERC165).interfaceId, erc165);
-        assertEq(type(IERC4626).interfaceId, erc4626);
         assertEq(type(IERC7575).interfaceId, erc7575Vault);
 
         ERC20 asset = new USDC();
@@ -35,10 +33,8 @@ contract TestInterfaceFunctionSelectors is Test {
         assertTrue(depositExample.supportsInterface(erc7575Vault));
         assertTrue(depositExample.supportsInterface(erc7540Operator));
         assertTrue(depositExample.supportsInterface(erc165));
-        assertTrue(depositExample.supportsInterface(erc4626));
         assertTrue(redeemExample.supportsInterface(erc7575Vault));
         assertTrue(redeemExample.supportsInterface(erc7540Operator));
         assertTrue(redeemExample.supportsInterface(erc165));
-        assertTrue(redeemExample.supportsInterface(erc4626));
     }
 }

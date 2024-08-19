@@ -3,13 +3,10 @@ pragma solidity ^0.8.15;
 
 import {IERC7540Deposit, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {console} from "forge-std/console.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -147,7 +144,7 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7575).interfaceId
+            || interfaceId == type(IERC7575).interfaceId
             || interfaceId == type(IERC7540Operator).interfaceId;
     }
 

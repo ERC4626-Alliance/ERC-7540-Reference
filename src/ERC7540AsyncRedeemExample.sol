@@ -3,7 +3,6 @@ pragma solidity ^0.8.15;
 
 import {IERC7540Redeem, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -156,7 +155,7 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
     // --- ERC165 support ---
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC4626).interfaceId || interfaceId == type(IERC7575).interfaceId
+            || interfaceId == type(IERC7575).interfaceId
             || interfaceId == type(IERC7540Operator).interfaceId;
     }
 
