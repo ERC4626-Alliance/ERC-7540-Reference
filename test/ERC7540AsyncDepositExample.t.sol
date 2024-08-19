@@ -23,7 +23,7 @@ contract ERC7540AsyncDepositExampleTest is Test {
         deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new ERC7540AsyncDepositExample(asset, "Vault Share", "vMTK");
+        vault = new ERC7540AsyncDepositExample(asset, "Vault Share", "TEST");
     }
 
     function testRequestDeposit() public {
