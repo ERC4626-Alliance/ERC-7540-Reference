@@ -18,7 +18,6 @@ contract TestInterfaceFunctionSelectors is Test {
         bytes4 erc7575Vault = 0x2f0a18c5;
         bytes4 erc7540Operator = 0xe3bc4e65;
         bytes4 erc165 = 0x01ffc9a7;
-        bytes4 erc4626 = 0x87dfe5a0;
 
         assertEq(type(IERC7540Deposit).interfaceId, erc7540Deposit);
         assertEq(type(IERC7540Redeem).interfaceId, erc7540Redeem);
