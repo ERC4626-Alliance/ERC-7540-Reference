@@ -5,7 +5,7 @@ import {IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 
@@ -25,11 +25,9 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncRedeemExample is IERC7540Redeem, ERC4626, Owned {
+contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
-
-    uint8 internal immutable _shareDecimals;
 
     mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
@@ -63,7 +61,7 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, ERC4626, Owned {
 
         uint256 assets = convertToAssets(shares);
 
-        SafeTransferLib.safeTransferFrom(address(this), owner, address(this), shares);
+        SafeTransferLib.safeTransferFrom(this, owner, address(this), shares);
 
         _pendingRedemption[controller] = RedemptionRequest({
             assets: assets,
@@ -117,7 +115,7 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, ERC4626, Owned {
         delete _pendingRedemption[owner];
         _totalPendingAssets -= claimableAssets;
 
-        SafeTransferLib.safeTransfer(address(asset), receiver, claimableAssets);
+        SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
 
         emit Withdraw(msg.sender, receiver, owner, claimableAssets, shares);
     }
@@ -134,7 +132,7 @@ contract ERC7540AsyncRedeemExample is IERC7540Redeem, ERC4626, Owned {
         delete _pendingRedemption[owner];
         _totalPendingAssets -= assets;
 
-        SafeTransferLib.safeTransfer(address(asset), receiver, assets);
+        SafeTransferLib.safeTransfer(asset, receiver, assets);
 
         emit Withdraw(msg.sender, receiver, owner, assets, shares);
     }

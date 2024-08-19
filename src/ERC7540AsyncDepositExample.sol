@@ -5,7 +5,7 @@ import {IERC7540Deposit} from "src/interfaces/IERC7540.sol";
 import {ERC4626} from "solmate/mixins/ERC4626.sol";
 import {IERC4626} from "src/interfaces/IERC4626.sol";
 import {IERC165} from "src/interfaces/IERC7575.sol";
-import {SafeTransferLib} from "src/libraries/SafeTransferLib.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {Owned} from "solmate/auth/Owned.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
@@ -23,11 +23,9 @@ import {console} from "forge-std/console.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
+contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
-
-    uint8 internal immutable _shareDecimals;
 
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
@@ -64,7 +62,7 @@ contract ERC7540AsyncDepositExample is IERC7540Deposit, ERC4626, Owned {
         require(asset.balanceOf(owner) >= assets, "ERC7540Vault/insufficient-balance");
         require(assets != 0, "ZERO_ASSETS");
 
-        SafeTransferLib.safeTransferFrom(address(asset), owner, address(this), assets);
+        SafeTransferLib.safeTransferFrom(asset, owner, address(this), assets);
 
         uint256 currentPendingAssets = _pendingDeposit[owner].assets;
         _pendingDeposit[owner] = PendingDeposit(assets + currentPendingAssets);
