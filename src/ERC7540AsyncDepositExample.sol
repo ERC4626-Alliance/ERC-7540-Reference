@@ -61,8 +61,8 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
 
         SafeTransferLib.safeTransferFrom(asset, owner, address(this), assets);
 
-        uint256 currentPendingAssets = _pendingDeposit[owner].assets;
-        _pendingDeposit[owner] = PendingDeposit(assets + currentPendingAssets);
+        uint256 currentPendingAssets = _pendingDeposit[controller].assets;
+        _pendingDeposit[controller] = PendingDeposit(assets + currentPendingAssets);
 
         _totalPendingAssets += assets;
 
@@ -127,18 +127,17 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
         assets = _claimableDeposit[controller].assets;
         delete _claimableDeposit[controller];
 
-        // Use transfer instead of _transfer
         ERC20(address(this)).transfer(receiver, shares);
 
         emit Deposit(receiver, controller, assets, shares);
     }
 
-    function maxDeposit(address owner) public view override returns (uint256) {
-        return _claimableDeposit[owner].assets;
+    function maxDeposit(address controller) public view override returns (uint256) {
+        return _claimableDeposit[controller].assets;
     }
 
-    function maxMint(address owner) public view override returns (uint256) {
-        return _claimableDeposit[owner].shares;
+    function maxMint(address controller) public view override returns (uint256) {
+        return _claimableDeposit[controller].shares;
     }
 
     // --- ERC165 support ---

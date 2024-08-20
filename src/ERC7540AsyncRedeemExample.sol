@@ -100,39 +100,39 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(uint256 assets, address receiver, address owner) public override returns (uint256 shares) {
-        require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-caller");
-        require(assets != 0 && assets == maxWithdraw(owner), "Must claim nonzero maximum");
+    function withdraw(uint256 assets, address receiver, address controller) public override returns (uint256 shares) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(assets != 0 && assets == maxWithdraw(controller), "Must claim nonzero maximum");
 
-        RedemptionRequest storage request = _pendingRedemption[owner];
+        RedemptionRequest storage request = _pendingRedemption[controller];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
         shares = request.shares;
         uint256 claimableAssets = request.assets;
 
-        delete _pendingRedemption[owner];
+        delete _pendingRedemption[controller];
         _totalPendingAssets -= claimableAssets;
 
         SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
 
-        emit Withdraw(msg.sender, receiver, owner, claimableAssets, shares);
+        emit Withdraw(msg.sender, receiver, controller, claimableAssets, shares);
     }
 
-    function redeem(uint256 shares, address receiver, address owner) public override returns (uint256 assets) {
-        require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-caller");
-        require(shares != 0 && shares == maxRedeem(owner), "Must claim nonzero maximum");
+    function redeem(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(shares != 0 && shares == maxRedeem(controller), "Must claim nonzero maximum");
 
-        RedemptionRequest storage request = _pendingRedemption[owner];
+        RedemptionRequest storage request = _pendingRedemption[controller];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
         assets = request.assets;
 
-        delete _pendingRedemption[owner];
+        delete _pendingRedemption[controller];
         _totalPendingAssets -= assets;
 
         SafeTransferLib.safeTransfer(asset, receiver, assets);
 
-        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+        emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
     function maxWithdraw(address controller) public view override returns (uint256) {
