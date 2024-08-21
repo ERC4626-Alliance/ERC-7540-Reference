@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import {BaseERC7540} from "src/BaseERC7540.sol";
 import {IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
@@ -17,11 +18,10 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *     - new redemptions restart the 3 day delay even if the prior redemption is claimable.
  *         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
  *     - the redemption exchange rate is locked in immediately upon request.
- *     - users can only redeem the maximum amount.
- *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
- *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
 abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
+    using FixedPointMathLib for uint256;
+
     uint32 public constant TIMELOCK = 3 days;
 
     uint256 internal _totalPendingRedeemAssets;
@@ -86,20 +86,24 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         returns (uint256 shares)
     {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(assets != 0 && assets == maxWithdraw(controller), "Must claim nonzero maximum");
+        require(assets != 0, "Must claim nonzero amount");
 
         RedemptionRequest storage request = _pendingRedemption[controller];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
-        shares = request.shares;
-        uint256 claimableAssets = request.assets;
+        // Claiming partially introduces precision loss. The user therefore receives a rounded down amount,
+        // while the claimable balance is reduced by a rounded up amount.
+        shares = assets.mulDivDown(request.shares, request.assets);
+        uint256 sharesUp = assets.mulDivUp(request.shares, request.assets);
 
-        delete _pendingRedemption[controller];
-        _totalPendingRedeemAssets -= claimableAssets;
+        request.assets -= assets;
+        request.shares = request.shares > sharesUp ? request.shares - sharesUp : 0;
 
-        SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
+        _totalPendingRedeemAssets -= assets;
 
-        emit Withdraw(msg.sender, receiver, controller, claimableAssets, shares);
+        SafeTransferLib.safeTransfer(asset, receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
     function redeem(uint256 shares, address receiver, address controller)
@@ -109,14 +113,17 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         returns (uint256 assets)
     {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(shares != 0 && shares == maxRedeem(controller), "Must claim nonzero maximum");
+        require(shares != 0, "Must claim nonzero amount");
 
         RedemptionRequest storage request = _pendingRedemption[controller];
         require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
-        assets = request.assets;
+        assets = shares.mulDivDown(request.assets, request.shares);
+        uint256 assetsUp = shares.mulDivUp(request.assets, request.shares);
 
-        delete _pendingRedemption[controller];
+        request.assets = request.assets > assetsUp ? request.assets - assetsUp : 0;
+        request.shares -= shares;
+
         _totalPendingRedeemAssets -= assets;
 
         SafeTransferLib.safeTransfer(asset, receiver, assets);

@@ -4,6 +4,7 @@ pragma solidity ^0.8.15;
 import {BaseERC7540} from "src/BaseERC7540.sol";
 import {IERC7540Deposit} from "src/interfaces/IERC7540.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
@@ -14,11 +15,10 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *     This Vault has the following properties:
  *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
  *     - async deposits are subject to approval by an owner account
- *     - users can only deposit the maximum amount.
- *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
- *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
 abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
+    using FixedPointMathLib for uint256;
+
     uint256 internal _totalPendingDepositAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
@@ -71,52 +71,63 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
                         DEPOSIT FULFILLMENT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function fulfillDeposit(address controller) public onlyOwner returns (uint256 shares) {
-        PendingDeposit memory request = _pendingDeposit[controller];
-        require(request.assets != 0, "ZERO_ASSETS");
+    function fulfillDeposit(address controller, uint256 assets) public onlyOwner returns (uint256 shares) {
+        PendingDeposit storage request = _pendingDeposit[controller];
+        require(request.assets != 0 && assets <= request.assets, "ZERO_ASSETS");
 
-        shares = convertToShares(request.assets);
+        shares = convertToShares(assets);
         _mint(address(this), shares);
 
-        uint256 currentClaimableAssets = _claimableDeposit[controller].assets;
-        uint256 currentClaimableShares = _claimableDeposit[controller].shares;
-        _claimableDeposit[controller] =
-            ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
+        _claimableDeposit[controller] = ClaimableDeposit(
+            _claimableDeposit[controller].assets + assets, _claimableDeposit[controller].shares + shares
+        );
 
-        delete _pendingDeposit[controller];
-        _totalPendingDepositAssets -= request.assets;
+        request.assets -= assets;
+        _totalPendingDepositAssets -= assets;
+    }
+
+    function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(assets != 0, "Must claim nonzero amount");
+
+        // Claiming partially introduces precision loss. The user therefore receives a rounded down amount,
+        // while the claimable balance is reduced by a rounded up amount.
+        ClaimableDeposit storage claimable = _claimableDeposit[controller];
+        shares = assets.mulDivDown(claimable.shares, claimable.assets);
+        uint256 sharesUp = assets.mulDivUp(claimable.shares, claimable.assets);
+
+        claimable.assets -= assets;
+        claimable.shares = claimable.shares > sharesUp ? claimable.shares - sharesUp : 0;
+
+        ERC20(address(this)).transfer(receiver, shares);
+
+        emit Deposit(receiver, controller, assets, shares);
+    }
+
+    function mint(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(shares != 0, "Must claim nonzero amount");
+
+        // Claiming partially introduces precision loss. The user therefore receives a rounded down amount,
+        // while the claimable balance is reduced by a rounded up amount.
+        ClaimableDeposit storage claimable = _claimableDeposit[controller];
+        assets = shares.mulDivDown(claimable.assets, claimable.shares);
+        uint256 assetsUp = shares.mulDivUp(claimable.assets, claimable.shares);
+
+        claimable.assets = claimable.assets > assetsUp ? claimable.assets - assetsUp : 0;
+        claimable.shares -= shares;
+
+        ERC20(address(this)).transfer(receiver, shares);
+
+        emit Deposit(receiver, controller, assets, shares);
     }
 
     /*//////////////////////////////////////////////////////////////
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function deposit(uint256 assets, address receiver, address controller) public returns (uint256 shares) {
-        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(assets != 0 && assets == maxDeposit(controller), "Must claim nonzero maximum");
-
-        shares = _claimableDeposit[controller].shares;
-        delete _claimableDeposit[controller];
-
-        ERC20(address(this)).transfer(receiver, shares);
-
-        emit Deposit(receiver, controller, assets, shares);
-    }
-
     function deposit(uint256 assets, address receiver) public virtual override returns (uint256 shares) {
         shares = deposit(assets, receiver, receiver);
-    }
-
-    function mint(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
-        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
-        require(shares != 0 && shares == maxMint(controller), "Must claim nonzero maximum");
-
-        assets = _claimableDeposit[controller].assets;
-        delete _claimableDeposit[controller];
-
-        ERC20(address(this)).transfer(receiver, shares);
-
-        emit Deposit(receiver, controller, assets, shares);
     }
 
     function mint(uint256 shares, address receiver) public virtual override returns (uint256 assets) {

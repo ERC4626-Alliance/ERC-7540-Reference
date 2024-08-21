@@ -55,7 +55,7 @@ contract ControlledAsyncDepositsTest is Test {
         vm.stopPrank();
 
         // Then, fulfill the deposit as the owner
-        uint256 shares = vault.fulfillDeposit(user);
+        uint256 shares = vault.fulfillDeposit(user, depositAmount);
 
         assertEq(shares, depositAmount, "Shares should equal deposit amount");
         assertEq(
@@ -72,7 +72,7 @@ contract ControlledAsyncDepositsTest is Test {
         vault.requestDeposit(depositAmount, user, user);
         vm.stopPrank();
 
-        vault.fulfillDeposit(user);
+        vault.fulfillDeposit(user, depositAmount);
 
         // Now claim the deposit
         vm.prank(user);
@@ -123,7 +123,7 @@ contract ControlledAsyncDepositsTest is Test {
         vm.prank(operator);
         vault.requestDeposit(depositAmount, user, user);
 
-        vault.fulfillDeposit(user);
+        vault.fulfillDeposit(user, depositAmount);
 
         vm.startPrank(operator);
         uint256 shares = vault.deposit(vault.maxDeposit(user), user, user);
