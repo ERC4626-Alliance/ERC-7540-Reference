@@ -22,6 +22,10 @@ abstract contract BaseERC7540 is ERC4626, Owned, IERC7540Operator {
         ERC4626(_asset, _name, _symbol)
     {}
 
+    function totalAssets() public view virtual override returns (uint256) {
+        return ERC20(asset).balanceOf(address(this));
+    }
+
     /*//////////////////////////////////////////////////////////////
                         ERC7540 LOGIC
     //////////////////////////////////////////////////////////////*/

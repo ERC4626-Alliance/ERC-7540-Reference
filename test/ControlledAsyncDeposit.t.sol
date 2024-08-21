@@ -2,13 +2,13 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import {ControlledAsyncDeposits} from "src/ControlledAsyncDeposits.sol";
+import {ControlledAsyncDeposit} from "src/ControlledAsyncDeposit.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract USDC is ERC20("USDC", "USDC", 6) {}
 
-contract ControlledAsyncDepositsTest is Test {
-    ControlledAsyncDeposits public vault;
+contract ControlledAsyncDepositTest is Test {
+    ControlledAsyncDeposit public vault;
     ERC20 public asset;
     address public owner;
     address public user;
@@ -23,7 +23,7 @@ contract ControlledAsyncDepositsTest is Test {
         deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new ControlledAsyncDeposits(asset, "Vault Share", "TEST");
+        vault = new ControlledAsyncDeposit(asset, "Vault Share", "TEST");
     }
 
     function testRequestDeposit() public {

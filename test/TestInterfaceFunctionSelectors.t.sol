@@ -4,8 +4,8 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 import {IERC7540Deposit, IERC7540Redeem, IERC7540Operator} from "src/interfaces/IERC7540.sol";
 import {IERC165, IERC7575} from "src/interfaces/IERC7575.sol";
-import {ControlledAsyncDeposits} from "src/ControlledAsyncDeposits.sol";
-import {TimelockedAsyncWithdrawals} from "src/TimelockedAsyncWithdrawals.sol";
+import {ControlledAsyncDeposit} from "src/ControlledAsyncDeposit.sol";
+import {TimelockedAsyncRedeem} from "src/TimelockedAsyncRedeem.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract USDC is ERC20("USDC", "USDC", 6) {}
@@ -26,8 +26,8 @@ contract TestInterfaceFunctionSelectors is Test {
         assertEq(type(IERC7575).interfaceId, erc7575Vault);
 
         ERC20 asset = new USDC();
-        ControlledAsyncDeposits depositExample = new ControlledAsyncDeposits(asset, "Vault Share", "TEST");
-        TimelockedAsyncWithdrawals redeemExample = new TimelockedAsyncWithdrawals(asset, "Vault Share", "TEST");
+        ControlledAsyncDeposit depositExample = new ControlledAsyncDeposit(asset, "Vault Share", "TEST");
+        TimelockedAsyncRedeem redeemExample = new TimelockedAsyncRedeem(asset, "Vault Share", "TEST");
 
         assertTrue(depositExample.supportsInterface(erc7575Vault));
         assertTrue(depositExample.supportsInterface(erc7540Operator));

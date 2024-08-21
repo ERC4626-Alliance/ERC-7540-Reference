@@ -16,7 +16,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
  *     - async deposits are subject to approval by an owner account
  */
-abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
+abstract contract BaseControlledAsyncDeposit is BaseERC7540, IERC7540Deposit {
     using FixedPointMathLib for uint256;
 
     uint256 internal _totalPendingDepositAssets;
@@ -159,6 +159,6 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
     }
 }
 
-contract ControlledAsyncDeposits is BaseControlledAsyncDeposits {
+contract ControlledAsyncDeposit is BaseControlledAsyncDeposit {
     constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 }
