@@ -1,175 +1,168 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.15;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.15;
 
-// import "solmate/mixins/ERC4626.sol";
+import {IERC7540Redeem, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
+import {ERC4626} from "solmate/mixins/ERC4626.sol";
+import {IERC165} from "src/interfaces/IERC7575.sol";
+import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
+import {Owned} from "solmate/auth/Owned.sol";
 
-// // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
+// THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
+/**
+ * @notice ERC7540 Implementing Delayed Async Withdrawals
+ *
+ *     This Vault has the following properties:
+ *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
+ *     - async redemptions are subject to a 3 day delay
+ *     - new redemptions restart the 3 day delay even if the prior redemption is claimable.
+ *         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
+ *     - the redemption exchange rate is locked in immediately upon request.
+ *     - users can only redeem the maximum amount.
+ *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
+ *         Conversions between claimable assets/shares should be checked for rounding safety.
+ */
+contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
+    /// @dev Assume requests are non-fungible and all have ID = 0
+    uint256 private constant REQUEST_ID = 0;
 
-// /** 
-// @notice ERC7540 Implementing Delayed Async Withdrawals 
+    mapping(address => RedemptionRequest) internal _pendingRedemption;
+    uint256 internal _totalPendingAssets;
+    mapping(address => mapping(address => bool)) public isOperator;
 
-//     This Vault has the following properties:
-//     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
-//     - async redemptions are subject to a 3 day delay
-//     - new redemptions restart the 3 day delay even if the prior redemption is claimable. 
-//         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
-//     - the redemption exchange rate is locked in immediately upon request.
-//     - users can only redeem the maximum amount. 
-//         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims. 
-//         Conversions between claimable assets/shares should be checked for rounding safety.
-// */
-// contract ERC7540AsyncRedeemExample is ERC4626 {
+    uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
 
-//     mapping(uint256 => RedemptionRequest) internal _pendingRedemption;
-//     uint256 internal _totalPendingAssets;
-    
-//     uint256 public ids;
+    struct RedemptionRequest {
+        uint256 assets;
+        uint256 shares;
+        uint32 claimableTimestamp;
+    }
 
-//     struct RedemptionRequest {
-//         address operator;
-//         uint256 assets;
-//         uint256 shares;
-//         uint32 claimableTimestamp;
-//     }
+    constructor(ERC20 _asset, string memory _name, string memory _symbol)
+        Owned(msg.sender)
+        ERC4626(_asset, _name, _symbol)
+    {}
 
-//     uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
+    function totalAssets() public view override returns (uint256) {
+        return ERC20(asset).balanceOf(address(this)) - _totalPendingAssets;
+    }
 
-// event RedeemRequest(address indexed sender, address indexed operator, address indexed owner, uint256 shares);
+    /*//////////////////////////////////////////////////////////////
+                        ERC7540 LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-//     constructor(
-//         ERC20 _asset,
-//         string memory _name,
-//         string memory _symbol
-//     ) ERC4626(_asset, _name, _symbol) {}
+    function requestRedeem(uint256 shares, address controller, address owner) external returns (uint256 requestId) {
+        require(owner == msg.sender || isOperator[owner][msg.sender], "ERC7540Vault/invalid-owner");
+        require(ERC20(address(this)).balanceOf(owner) >= shares, "ERC7540Vault/insufficient-balance");
+        require(shares != 0, "ZERO_SHARES");
 
-//     function totalAssets() public view override returns (uint256) {
-//         // total assets pending redemption must be removed from the reported total assets
-//         // otherwise pending assets would be treated as yield for outstanding shares
-//         return asset.balanceOf(address(this)) - _totalPendingAssets;
-//     }
+        uint256 assets = convertToAssets(shares);
 
-//     /*//////////////////////////////////////////////////////////////
-//                         ERC7540 LOGIC
-//     //////////////////////////////////////////////////////////////*/
+        SafeTransferLib.safeTransferFrom(this, owner, address(this), shares);
 
-//     /// @notice this redemption request locks in the current exchange rate, restarts the withdrawal timelock delay, and increments any outstanding request
-//     /// NOTE: if there is an outstanding claimable request, users benefit from claiming before requesting again
-//     function requestRedeem(uint256 shares, address operator, address owner) public returns (uint id) {
-//         if (msg.sender != owner) {
-//             uint256 allowed = allowance[owner][msg.sender]; // Saves gas for limited approvals.
+        _pendingRedemption[controller] = RedemptionRequest({
+            assets: assets,
+            shares: shares,
+            claimableTimestamp: uint32(block.timestamp) + REDEEM_DELAY_SECONDS
+        });
 
-//             if (allowed != type(uint256).max) allowance[owner][msg.sender] = allowed - shares;
-//         }
+        _totalPendingAssets += assets;
 
-//         uint256 assets;
-//         require((assets = convertToAssets(shares)) != 0, "ZERO_ASSETS");
+        emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
+        return REQUEST_ID;
+    }
 
-//         _burn(owner, shares);
+    function pendingRedeemRequest(uint256, address controller) public view returns (uint256 pendingShares) {
+        RedemptionRequest memory request = _pendingRedemption[controller];
+        if (request.claimableTimestamp > block.timestamp) {
+            return request.shares;
+        }
+        return 0;
+    }
 
-//         id = ids++;
+    function claimableRedeemRequest(uint256, address controller) public view returns (uint256 claimableShares) {
+        RedemptionRequest memory request = _pendingRedemption[controller];
+        if (request.claimableTimestamp <= block.timestamp && request.shares > 0) {
+            return request.shares;
+        }
+        return 0;
+    }
 
-//         _pendingRedemption[id] = RedemptionRequest(operator, assets, shares, uint32(block.timestamp) + REDEEM_DELAY_SECONDS);
+    function setOperator(address operator, bool approved) public virtual returns (bool success) {
+        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
+        isOperator[msg.sender][operator] = approved;
+        emit OperatorSet(msg.sender, operator, approved);
+        success = true;
+    }
 
-//         _totalPendingAssets += assets;
-        
-//         emit RedeemRequest(msg.sender, operator, owner, shares);
-//     }
+    /*//////////////////////////////////////////////////////////////
+                        ERC4626 OVERRIDDEN LOGIC
+    //////////////////////////////////////////////////////////////*/
 
-//     function pendingRedeemRequest(uint256 id) public view returns (uint256 shares) {
-//         RedemptionRequest memory request = _pendingRedemption[id];
+    function withdraw(uint256 assets, address receiver, address controller) public override returns (uint256 shares) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(assets != 0 && assets == maxWithdraw(controller), "Must claim nonzero maximum");
 
-//         // If the claimable timestamp is in the future, return the pending shares
-//         // Otherwise return 0 as all are claimable
-//         if (request.claimableTimestamp > block.timestamp) {
-//             return request.shares;
-//         }
-//     }
+        RedemptionRequest storage request = _pendingRedemption[controller];
+        require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
-//     function ownerOf(uint256 rid) public view returns (address) {
-//         return _pendingRedemption[rid].operator;
-//     }
+        shares = request.shares;
+        uint256 claimableAssets = request.assets;
 
-//     function transferRequest(uint256 rid, address to) public view returns (address) {
-//         require (msg.sender == ownerOf(rid)); // Can optionally add additional approval/validation logic here
+        delete _pendingRedemption[controller];
+        _totalPendingAssets -= claimableAssets;
 
-//         _pendingRedemption[rid].operator = to;
-//     }
+        SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
 
-//     function claimRequest(uint256 rid, address to) public view returns (address) {
-//         redeem(_pendingRedemption[rid].shares, to, _pendingRedemption[rid].operator);
-//     }
+        emit Withdraw(msg.sender, receiver, controller, claimableAssets, shares);
+    }
 
-//     /*//////////////////////////////////////////////////////////////
-//                         ERC4626 OVERRIDDEN LOGIC
-//     //////////////////////////////////////////////////////////////*/
+    function redeem(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
+        require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
+        require(shares != 0 && shares == maxRedeem(controller), "Must claim nonzero maximum");
 
-//     function withdraw(
-//         uint256 assets,
-//         address receiver,
-//         address operator
-//     ) public override returns (uint256 shares) {
-//         require(msg.sender == operator, "Sender must be operator");
-//         // The maxWithdraw call checks that assets are claimable
-//         require(assets != 0 && assets == maxWithdraw(operator), "Must claim nonzero maximum");
+        RedemptionRequest storage request = _pendingRedemption[controller];
+        require(request.claimableTimestamp <= block.timestamp, "ERC7540Vault/not-claimable-yet");
 
-//         shares = _pendingRedemption[operator].shares;
-//         delete _pendingRedemption[operator];
+        assets = request.assets;
 
-//         _totalPendingAssets -= assets;
+        delete _pendingRedemption[controller];
+        _totalPendingAssets -= assets;
 
-//         asset.transfer(receiver, assets);
+        SafeTransferLib.safeTransfer(asset, receiver, assets);
 
-//         emit Withdraw(msg.sender, receiver, operator, assets, shares);
-//     }
+        emit Withdraw(msg.sender, receiver, controller, assets, shares);
+    }
 
-//     function redeem(
-//         uint256 shares,
-//         address receiver,
-//         address operator
-//     ) public override returns (uint256 assets) {
-//         require(msg.sender == operator, "Sender must be operator");
-//         // The maxWithdraw call checks that assets are claimable
-//         require(shares != 0 && shares == maxRedeem(operator), "Must claim nonzero maximum");
+    function maxWithdraw(address controller) public view override returns (uint256) {
+        RedemptionRequest memory request = _pendingRedemption[controller];
+        if (request.claimableTimestamp <= block.timestamp) {
+            return request.assets;
+        }
+        return 0;
+    }
 
-//         assets = _pendingRedemption[operator].assets;
-//         delete _pendingRedemption[operator];
+    function maxRedeem(address controller) public view override returns (uint256) {
+        RedemptionRequest memory request = _pendingRedemption[controller];
+        if (request.claimableTimestamp <= block.timestamp) {
+            return request.shares;
+        }
+        return 0;
+    }
 
-//         _totalPendingAssets -= assets;
+    // --- ERC165 support ---
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
+            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
+    }
 
-//         asset.transfer(receiver, assets);
+    // Preview functions always revert for async flows
+    function previewWithdraw(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
+    }
 
-//         emit Withdraw(msg.sender, receiver, operator, assets, shares);
-//     }
-
-//     // The max functions return the outstanding quanitity if if the redeem delay window has passed
-
-//     function maxWithdraw(address operator) public view override returns (uint256) {
-//         RedemptionRequest memory request = _pendingRedemption[operator];
-
-//         // If the redeem delay window has passed, return the pending assets
-//         if (request.claimableTimestamp <= block.timestamp) {
-//             return request.assets;
-//         }
-//     }
-
-//     function maxRedeem(address operator) public view override returns (uint256) {
-//         RedemptionRequest memory request = _pendingRedemption[operator];
-
-//         // If the redeem delay window has passed, return the pending shares
-//         if (request.claimableTimestamp <= block.timestamp) {
-//             return request.shares;
-//         }
-//     }
-
-//     // Preview functions always revert for async flows
-
-//     function previewWithdraw(uint256) public pure override returns (uint256) {
-//         revert ();
-//     }
-
-//     function previewRedeem(uint256) public pure override returns (uint256) {
-//         revert ();
-//     }
-
-// }
+    function previewRedeem(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
+    }
+}

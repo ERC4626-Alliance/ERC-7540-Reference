@@ -1,15 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.8.15;
+pragma solidity >=0.5.0;
 
-import {IERC20Metadata} from "./IERC20.sol";
+/**
+ * @dev Interface of the ERC165 standard, as defined in the
+ * https://eips.ethereum.org/EIPS/eip-165[EIP].
+ *
+ * Implementers can declare support of contract interfaces, which can then be
+ * queried by others.
+ */
+interface IERC165 {
+    /**
+     * @dev Returns true if this contract implements the interface defined by
+     * `interfaceId`. See the corresponding
+     * https://eips.ethereum.org/EIPS/eip-165#how-interfaces-are-identified[EIP section]
+     * to learn more about how these ids are created.
+     *
+     * This function call must use less than 30 000 gas.
+     */
+    function supportsInterface(bytes4 interfaceId) external view returns (bool);
+}
 
-/// @title  IERC4626
-/// @dev    Interface of the ERC4626 "Tokenized Vault Standard", as defined in
-///         https://eips.ethereum.org/EIPS/eip-4626[ERC-4626].
-/// @author Modified from OpenZeppelin Contracts (last updated v4.9.0) (interfaces/IERC4626.sol)
-interface IERC4626 is IERC20Metadata {
+interface IERC7575 is IERC165 {
     event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
-
     event Withdraw(
         address indexed sender, address indexed receiver, address indexed owner, uint256 assets, uint256 shares
     );
@@ -23,13 +35,12 @@ interface IERC4626 is IERC20Metadata {
     function asset() external view returns (address assetTokenAddress);
 
     /**
-     * @dev Returns the total amount of the underlying asset that is “managed” by Vault.
+     * @dev Returns the address of the share token
      *
-     * - SHOULD include any compounding that occurs from yield.
-     * - MUST be inclusive of any fees that are charged against assets in the Vault.
+     * - MUST be an ERC-20 token contract.
      * - MUST NOT revert.
      */
-    function totalAssets() external view returns (uint256 totalManagedAssets);
+    function share() external view returns (address shareTokenAddress);
 
     /**
      * @dev Returns the amount of shares that the Vault would exchange for the amount of assets provided, in an ideal
@@ -60,6 +71,15 @@ interface IERC4626 is IERC20Metadata {
      * from.
      */
     function convertToAssets(uint256 shares) external view returns (uint256 assets);
+
+    /**
+     * @dev Returns the total amount of the underlying asset that is “managed” by Vault.
+     *
+     * - SHOULD include any compounding that occurs from yield.
+     * - MUST be inclusive of any fees that are charged against assets in the Vault.
+     * - MUST NOT revert.
+     */
+    function totalAssets() external view returns (uint256 totalManagedAssets);
 
     /**
      * @dev Returns the maximum amount of the underlying asset that can be deposited into the Vault for the receiver,
