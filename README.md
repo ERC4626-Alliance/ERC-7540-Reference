@@ -8,7 +8,7 @@ This code is unaudited.
 - Deposits are asynchronous and subject to fulfillment by an owner account
 - Redemptions are synchronous (standard ERC4626)
   
-#### Controlled Async Redeem ([code](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/ControlledAsyncDeposit.sol))
+#### Controlled Async Redeem ([code](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/ControlledAsyncRedeem.sol))
 - Deposits are synchronous (standard ERC4626)
 - Redemptions are asynchronous and subject to fulfillment by an owner account
   
