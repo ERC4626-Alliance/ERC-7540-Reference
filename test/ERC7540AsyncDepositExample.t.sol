@@ -96,7 +96,7 @@ contract ERC7540AsyncDepositExampleTest is Test {
 
         // Operator requests deposit on behalf of the user
         vm.prank(operator);
-        uint256 requestId = vault.requestDeposit(depositAmount, operator, user);
+        uint256 requestId = vault.requestDeposit(depositAmount, user, user);
 
         assertEq(requestId, 0, "Request ID should be 0");
         assertEq(vault.pendingDepositRequest(0, user), depositAmount, "Pending deposit should match requested amount");

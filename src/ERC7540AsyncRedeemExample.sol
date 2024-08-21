@@ -27,6 +27,8 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
+    address public share = address(this);
+
     mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
     mapping(address => mapping(address => bool)) public isOperator;

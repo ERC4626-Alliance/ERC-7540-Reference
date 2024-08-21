@@ -24,6 +24,8 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
+    address public share = address(this);
+
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
     uint256 internal _totalPendingAssets;
@@ -147,11 +149,11 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
     }
 
     // preview functions always revert for async flows
-    function previewDeposit(uint256 assets) public pure override returns (uint256 shares) {
+    function previewDeposit(uint256) public pure override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
-    function previewMint(uint256 shares) public pure override returns (uint256 assets) {
+    function previewMint(uint256) public pure override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 }
