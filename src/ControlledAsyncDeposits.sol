@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {IERC7540Deposit, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
+import {BaseERC7540} from "src/BaseERC7540.sol";
+import {IERC7540Deposit} from "src/interfaces/IERC7540.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {Owned} from "solmate/auth/Owned.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -20,17 +18,10 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
-    /// @dev Assume requests are non-fungible and all have ID = 0
-    uint256 private constant REQUEST_ID = 0;
-
-    address public share = address(this);
-
-    uint256 internal _totalPendingAssets;
+abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
+    uint256 internal _totalPendingDepositAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
-
-    mapping(address => mapping(address => bool)) public isOperator;
 
     struct PendingDeposit {
         uint256 assets;
@@ -41,15 +32,10 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
         uint256 shares;
     }
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol)
-        Owned(msg.sender)
-        ERC4626(_asset, _name, _symbol)
-    {}
-
-    function totalAssets() public view override returns (uint256) {
+    function totalAssets() public view virtual override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
         // otherwise pending assets would be treated as yield for outstanding shares
-        return ERC20(asset).balanceOf(address(this)) - _totalPendingAssets;
+        return ERC20(asset).balanceOf(address(this)) - _totalPendingDepositAssets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -67,7 +53,7 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
         uint256 currentPendingAssets = _pendingDeposit[controller].assets;
         _pendingDeposit[controller] = PendingDeposit(assets + currentPendingAssets);
 
-        _totalPendingAssets += assets;
+        _totalPendingDepositAssets += assets;
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;
@@ -79,13 +65,6 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
 
     function claimableDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
         claimableAssets = _claimableDeposit[controller].assets;
-    }
-
-    function setOperator(address operator, bool approved) public virtual returns (bool success) {
-        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
-        isOperator[msg.sender][operator] = approved;
-        emit OperatorSet(msg.sender, operator, approved);
-        success = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -105,7 +84,7 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
             ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
 
         delete _pendingDeposit[controller];
-        _totalPendingAssets -= request.assets;
+        _totalPendingDepositAssets -= request.assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -124,6 +103,10 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
         emit Deposit(receiver, controller, assets, shares);
     }
 
+    function deposit(uint256 assets, address receiver) public virtual override returns (uint256 shares) {
+        shares = deposit(assets, receiver, receiver);
+    }
+
     function mint(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
         require(shares != 0 && shares == maxMint(controller), "Must claim nonzero maximum");
@@ -136,20 +119,23 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
         emit Deposit(receiver, controller, assets, shares);
     }
 
-    function maxDeposit(address controller) public view override returns (uint256) {
+    function mint(uint256 shares, address receiver) public virtual override returns (uint256 assets) {
+        assets = mint(shares, receiver, receiver);
+    }
+
+    function maxDeposit(address controller) public view virtual override returns (uint256) {
         return _claimableDeposit[controller].assets;
     }
 
-    function maxMint(address controller) public view override returns (uint256) {
+    function maxMint(address controller) public view virtual override returns (uint256) {
         return _claimableDeposit[controller].shares;
     }
 
-    // preview functions always revert for async flows
-    function previewDeposit(uint256) public pure override returns (uint256) {
+    function previewDeposit(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
-    function previewMint(uint256) public pure override returns (uint256) {
+    function previewMint(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
@@ -157,8 +143,11 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
                         ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
+    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
+        return interfaceId == type(IERC7540Deposit).interfaceId || super.supportsInterface(interfaceId);
     }
+}
+
+contract ControlledAsyncDeposits is BaseControlledAsyncDeposits {
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 }

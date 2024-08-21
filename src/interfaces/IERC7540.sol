@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.5.0;
 
-import {IERC7575} from "src/interfaces/IERC7575.sol";
-
 interface IERC7540Operator {
     /**
      * @dev The event emitted when an operator is set.
@@ -32,7 +30,7 @@ interface IERC7540Operator {
     function isOperator(address controller, address operator) external view returns (bool status);
 }
 
-interface IERC7540Deposit is IERC7540Operator {
+interface IERC7540Deposit {
     event DepositRequest(
         address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets
     );
@@ -94,7 +92,7 @@ interface IERC7540Deposit is IERC7540Operator {
     function mint(uint256 shares, address receiver, address controller) external returns (uint256 assets);
 }
 
-interface IERC7540Redeem is IERC7540Operator {
+interface IERC7540Redeem {
     event RedeemRequest(
         address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets
     );

@@ -14,5 +14,8 @@ This code is unaudited.
 - The redemption exchange rate is locked in immediately upon request.
 - Users can only redeem the maximum amount.
 
+#### Fully Async Vault ([code](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/FullyAsyncVault.sol))
+- Inherits from Controlled Async Deposits and Timelocked Async Withdrawals
+  
 ## License
 This codebase is licensed under [MIT license](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/LICENSE).
