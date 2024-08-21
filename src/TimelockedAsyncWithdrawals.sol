@@ -21,7 +21,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract TimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
+abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
     uint32 public constant TIMELOCK = 3 days;
 
     uint256 internal _totalPendingApproxAssets;
@@ -32,8 +32,6 @@ contract TimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
         uint256 shares;
         uint32 claimableTimestamp;
     }
-
-    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 
     function totalAssets() public view override returns (uint256) {
         return ERC20(asset).balanceOf(address(this)) - _totalPendingApproxAssets;
@@ -148,4 +146,8 @@ contract TimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
         return interfaceId == type(IERC7540Redeem).interfaceId || super.supportsInterface(interfaceId);
     }
+}
+
+contract TimelockedAsyncWithdrawals is BaseTimelockedAsyncWithdrawals {
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 }

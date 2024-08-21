@@ -18,7 +18,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
+abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
     uint256 internal _totalPendingAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
@@ -31,8 +31,6 @@ contract ControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
         uint256 assets;
         uint256 shares;
     }
-
-    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 
     function totalAssets() public view override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
@@ -141,4 +139,8 @@ contract ControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
     function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId || super.supportsInterface(interfaceId);
     }
+}
+
+contract ControlledAsyncDeposits is BaseControlledAsyncDeposits {
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 }
