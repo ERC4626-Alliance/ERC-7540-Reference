@@ -2,13 +2,13 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import {ERC7540AsyncRedeemExample} from "src/ERC7540AsyncRedeemExample.sol";
+import {TimelockedAsyncWithdrawals} from "src/TimelockedAsyncWithdrawals.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract USDC is ERC20("USDC", "USDC", 6) {}
 
-contract ERC7540AsyncRedeemExampleTest is Test {
-    ERC7540AsyncRedeemExample public vault;
+contract TimelockedAsyncWithdrawalsTest is Test {
+    TimelockedAsyncWithdrawals public vault;
     ERC20 public asset;
     ERC20 public shareToken;
     address public owner;
@@ -24,7 +24,7 @@ contract ERC7540AsyncRedeemExampleTest is Test {
         deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new ERC7540AsyncRedeemExample(asset, "Vault Share", "TEST");
+        vault = new TimelockedAsyncWithdrawals(asset, "Vault Share", "TEST");
         shareToken = ERC20(address(vault));
 
         // Deposit assets to the vault

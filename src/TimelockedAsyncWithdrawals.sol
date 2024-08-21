@@ -23,17 +23,17 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
+contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
+    uint32 public constant TIMELOCK = 3 days;
 
     address public share = address(this);
 
-    mapping(address => RedemptionRequest) internal _pendingRedemption;
     uint256 internal _totalPendingAssets;
-    mapping(address => mapping(address => bool)) public isOperator;
+    mapping(address => RedemptionRequest) internal _pendingRedemption;
 
-    uint32 public constant REDEEM_DELAY_SECONDS = 3 days;
+    mapping(address => mapping(address => bool)) public isOperator;
 
     struct RedemptionRequest {
         uint256 assets;
@@ -63,11 +63,8 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
 
         SafeTransferLib.safeTransferFrom(this, owner, address(this), shares);
 
-        _pendingRedemption[controller] = RedemptionRequest({
-            assets: assets,
-            shares: shares,
-            claimableTimestamp: uint32(block.timestamp) + REDEEM_DELAY_SECONDS
-        });
+        _pendingRedemption[controller] =
+            RedemptionRequest({assets: assets, shares: shares, claimableTimestamp: uint32(block.timestamp) + TIMELOCK});
 
         _totalPendingAssets += assets;
 
@@ -153,12 +150,6 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
         return 0;
     }
 
-    // --- ERC165 support ---
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
-    }
-
     // Preview functions always revert for async flows
     function previewWithdraw(uint256) public pure override returns (uint256) {
         revert("ERC7540Vault/async-flow");
@@ -166,5 +157,14 @@ contract ERC7540AsyncRedeemExample is ERC4626, Owned, IERC7540Redeem {
 
     function previewRedeem(uint256) public pure override returns (uint256) {
         revert("ERC7540Vault/async-flow");
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        ERC165 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
+            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
     }
 }
