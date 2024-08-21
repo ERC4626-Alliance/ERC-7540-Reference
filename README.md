@@ -2,10 +2,12 @@
 
 Reference implementations for [ERC-7540](https://eips.ethereum.org/EIPS/eip-7540).
 
-[**Controlled Async Deposits**](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/ControlledAsyncDeposits.sol) reference:
-  - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
-  - async deposits are subject to approval by an owner account
-  - users can only deposit the maximum amount.
-  To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
-  Conversions between claimable assets/shares should be checked for rounding safety.
-
+### Controlled Async Deposits ([code](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/ControlledAsyncDeposits.sol))
+- Async deposits are subject to approval by an owner account
+- Users can only deposit the maximum amount.
+  
+### Timelocked Async Withdrawals ([code](https://github.com/ERC4626-Alliance/ERC-7540-Reference/blob/main/src/TimelockedAsyncWithdrawals.sol))
+- Async redemptions are subject to a 3 day delay
+- New redemptions restart the 3 day delay even if the prior redemption is claimable.
+- The redemption exchange rate is locked in immediately upon request.
+- Users can only redeem the maximum amount.
