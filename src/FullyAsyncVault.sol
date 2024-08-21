@@ -18,6 +18,7 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
     function totalAssets()
         public
         view
+        virtual
         override(BaseControlledAsyncDeposits, BaseTimelockedAsyncWithdrawals)
         returns (uint256)
     {
@@ -27,6 +28,7 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
     function maxDeposit(address controller)
         public
         view
+        virtual
         override(BaseControlledAsyncDeposits, ERC4626)
         returns (uint256)
     {
@@ -52,7 +54,13 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
         shares = BaseControlledAsyncDeposits.deposit(assets, receiver, receiver);
     }
 
-    function maxMint(address controller) public view override(BaseControlledAsyncDeposits, ERC4626) returns (uint256) {
+    function maxMint(address controller)
+        public
+        view
+        virtual
+        override(BaseControlledAsyncDeposits, ERC4626)
+        returns (uint256)
+    {
         return BaseControlledAsyncDeposits.maxMint(controller);
     }
 
@@ -78,6 +86,7 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
     function maxWithdraw(address controller)
         public
         view
+        virtual
         override(BaseTimelockedAsyncWithdrawals, ERC4626)
         returns (uint256)
     {
@@ -106,6 +115,7 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
     function maxRedeem(address controller)
         public
         view
+        virtual
         override(BaseTimelockedAsyncWithdrawals, ERC4626)
         returns (uint256)
     {
@@ -134,6 +144,7 @@ contract FullyAsyncVault is BaseControlledAsyncDeposits, BaseTimelockedAsyncWith
     function supportsInterface(bytes4 interfaceId)
         public
         pure
+        virtual
         override(BaseControlledAsyncDeposits, BaseTimelockedAsyncWithdrawals)
         returns (bool)
     {
