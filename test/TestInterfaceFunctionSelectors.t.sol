@@ -2,8 +2,8 @@
 pragma solidity ^0.8.15;
 
 import "forge-std/Test.sol";
-import {IERC7540Deposit, IERC7540Redeem, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
+import {IERC7540Deposit, IERC7540Redeem, IERC7540Operator} from "src/interfaces/IERC7540.sol";
+import {IERC165, IERC7575} from "src/interfaces/IERC7575.sol";
 import {ControlledAsyncDeposits} from "src/ControlledAsyncDeposits.sol";
 import {TimelockedAsyncWithdrawals} from "src/TimelockedAsyncWithdrawals.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";

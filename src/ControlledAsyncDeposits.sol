@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {IERC7540Deposit, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
+import {BaseERC7540} from "src/BaseERC7540.sol";
+import {IERC7540Deposit} from "src/interfaces/IERC7540.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {Owned} from "solmate/auth/Owned.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -20,17 +18,10 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
-    /// @dev Assume requests are non-fungible and all have ID = 0
-    uint256 private constant REQUEST_ID = 0;
-
-    address public share = address(this);
-
+contract ControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
     uint256 internal _totalPendingAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
-
-    mapping(address => mapping(address => bool)) public isOperator;
 
     struct PendingDeposit {
         uint256 assets;
@@ -41,10 +32,7 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
         uint256 shares;
     }
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol)
-        Owned(msg.sender)
-        ERC4626(_asset, _name, _symbol)
-    {}
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 
     function totalAssets() public view override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
@@ -79,13 +67,6 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
 
     function claimableDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
         claimableAssets = _claimableDeposit[controller].assets;
-    }
-
-    function setOperator(address operator, bool approved) public virtual returns (bool success) {
-        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
-        isOperator[msg.sender][operator] = approved;
-        emit OperatorSet(msg.sender, operator, approved);
-        success = true;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -157,8 +138,7 @@ contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
                         ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
+    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+        return interfaceId == type(IERC7540Deposit).interfaceId || super.supportsInterface(interfaceId);
     }
 }

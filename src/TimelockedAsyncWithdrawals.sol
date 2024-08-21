@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import {IERC7540Redeem, IERC7575, IERC7540Operator} from "src/interfaces/IERC7540.sol";
-import {ERC4626} from "solmate/mixins/ERC4626.sol";
-import {IERC165} from "src/interfaces/IERC7575.sol";
+import {BaseERC7540} from "src/BaseERC7540.sol";
+import {IERC7540Redeem} from "src/interfaces/IERC7540.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
-import {Owned} from "solmate/auth/Owned.sol";
 
 // THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
 
@@ -23,17 +21,11 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the redeem and withdraw functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
-    /// @dev Assume requests are non-fungible and all have ID = 0
-    uint256 private constant REQUEST_ID = 0;
+contract TimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
     uint32 public constant TIMELOCK = 3 days;
 
-    address public share = address(this);
-
-    uint256 internal _totalPendingAssets;
+    uint256 internal _totalPendingApproxAssets;
     mapping(address => RedemptionRequest) internal _pendingRedemption;
-
-    mapping(address => mapping(address => bool)) public isOperator;
 
     struct RedemptionRequest {
         uint256 assets;
@@ -41,13 +33,10 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
         uint32 claimableTimestamp;
     }
 
-    constructor(ERC20 _asset, string memory _name, string memory _symbol)
-        Owned(msg.sender)
-        ERC4626(_asset, _name, _symbol)
-    {}
+    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
 
     function totalAssets() public view override returns (uint256) {
-        return ERC20(asset).balanceOf(address(this)) - _totalPendingAssets;
+        return ERC20(asset).balanceOf(address(this)) - _totalPendingApproxAssets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -66,7 +55,7 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
         _pendingRedemption[controller] =
             RedemptionRequest({assets: assets, shares: shares, claimableTimestamp: uint32(block.timestamp) + TIMELOCK});
 
-        _totalPendingAssets += assets;
+        _totalPendingApproxAssets += assets;
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -88,13 +77,6 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
         return 0;
     }
 
-    function setOperator(address operator, bool approved) public virtual returns (bool success) {
-        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
-        isOperator[msg.sender][operator] = approved;
-        emit OperatorSet(msg.sender, operator, approved);
-        success = true;
-    }
-
     /*//////////////////////////////////////////////////////////////
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -110,7 +92,7 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
         uint256 claimableAssets = request.assets;
 
         delete _pendingRedemption[controller];
-        _totalPendingAssets -= claimableAssets;
+        _totalPendingApproxAssets -= claimableAssets;
 
         SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
 
@@ -127,7 +109,7 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
         assets = request.assets;
 
         delete _pendingRedemption[controller];
-        _totalPendingAssets -= assets;
+        _totalPendingApproxAssets -= assets;
 
         SafeTransferLib.safeTransfer(asset, receiver, assets);
 
@@ -163,8 +145,7 @@ contract TimelockedAsyncWithdrawals is ERC4626, Owned, IERC7540Redeem {
                         ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
-        return interfaceId == type(IERC7540Redeem).interfaceId || interfaceId == type(IERC165).interfaceId
-            || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
+    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+        return interfaceId == type(IERC7540Redeem).interfaceId || super.supportsInterface(interfaceId);
     }
 }
