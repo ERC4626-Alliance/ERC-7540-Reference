@@ -2,13 +2,13 @@
 pragma solidity ^0.8.26;
 
 import "forge-std/Test.sol";
-import {ERC7540AsyncDepositExample} from "src/ERC7540AsyncDepositExample.sol";
+import {ControlledAsyncDeposits} from "src/ControlledAsyncDeposits.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract USDC is ERC20("USDC", "USDC", 6) {}
 
-contract ERC7540AsyncDepositExampleTest is Test {
-    ERC7540AsyncDepositExample public vault;
+contract ControlledAsyncDepositsTest is Test {
+    ControlledAsyncDeposits public vault;
     ERC20 public asset;
     address public owner;
     address public user;
@@ -23,7 +23,7 @@ contract ERC7540AsyncDepositExampleTest is Test {
         deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new ERC7540AsyncDepositExample(asset, "Vault Share", "TEST");
+        vault = new ControlledAsyncDeposits(asset, "Vault Share", "TEST");
     }
 
     function testRequestDeposit() public {
@@ -96,7 +96,7 @@ contract ERC7540AsyncDepositExampleTest is Test {
 
         // Operator requests deposit on behalf of the user
         vm.prank(operator);
-        uint256 requestId = vault.requestDeposit(depositAmount, operator, user);
+        uint256 requestId = vault.requestDeposit(depositAmount, user, user);
 
         assertEq(requestId, 0, "Request ID should be 0");
         assertEq(vault.pendingDepositRequest(0, user), depositAmount, "Pending deposit should match requested amount");

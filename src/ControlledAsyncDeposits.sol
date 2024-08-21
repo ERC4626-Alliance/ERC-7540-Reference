@@ -20,13 +20,16 @@ import {Owned} from "solmate/auth/Owned.sol";
  *         To allow partial claims, the deposit and mint functions would need to allow for pro rata claims.
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
-contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
+contract ControlledAsyncDeposits is ERC4626, Owned, IERC7540Deposit {
     /// @dev Assume requests are non-fungible and all have ID = 0
     uint256 private constant REQUEST_ID = 0;
 
+    address public share = address(this);
+
+    uint256 internal _totalPendingAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
-    uint256 internal _totalPendingAssets;
+
     mapping(address => mapping(address => bool)) public isOperator;
 
     struct PendingDeposit {
@@ -74,9 +77,21 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
         pendingAssets = _pendingDeposit[controller].assets;
     }
 
+    function claimableDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
+        claimableAssets = _claimableDeposit[controller].assets;
+    }
+
+    function setOperator(address operator, bool approved) public virtual returns (bool success) {
+        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
+        isOperator[msg.sender][operator] = approved;
+        emit OperatorSet(msg.sender, operator, approved);
+        success = true;
+    }
+
     /*//////////////////////////////////////////////////////////////
                         DEPOSIT FULFILLMENT LOGIC
     //////////////////////////////////////////////////////////////*/
+
     function fulfillDeposit(address controller) public onlyOwner returns (uint256 shares) {
         PendingDeposit memory request = _pendingDeposit[controller];
         require(request.assets != 0, "ZERO_ASSETS");
@@ -91,17 +106,6 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
 
         delete _pendingDeposit[controller];
         _totalPendingAssets -= request.assets;
-    }
-
-    function setOperator(address operator, bool approved) public virtual returns (bool success) {
-        require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
-        isOperator[msg.sender][operator] = approved;
-        emit OperatorSet(msg.sender, operator, approved);
-        success = true;
-    }
-
-    function claimableDepositRequest(uint256, address controller) public view returns (uint256 claimableAssets) {
-        claimableAssets = _claimableDeposit[controller].assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -140,18 +144,21 @@ contract ERC7540AsyncDepositExample is ERC4626, Owned, IERC7540Deposit {
         return _claimableDeposit[controller].shares;
     }
 
-    // --- ERC165 support ---
+    // preview functions always revert for async flows
+    function previewDeposit(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
+    }
+
+    function previewMint(uint256) public pure override returns (uint256) {
+        revert("ERC7540Vault/async-flow");
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        ERC165 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId || interfaceId == type(IERC165).interfaceId
             || interfaceId == type(IERC7575).interfaceId || interfaceId == type(IERC7540Operator).interfaceId;
-    }
-
-    // preview functions always revert for async flows
-    function previewDeposit(uint256 assets) public pure override returns (uint256 shares) {
-        revert("ERC7540Vault/async-flow");
-    }
-
-    function previewMint(uint256 shares) public pure override returns (uint256 assets) {
-        revert("ERC7540Vault/async-flow");
     }
 }
