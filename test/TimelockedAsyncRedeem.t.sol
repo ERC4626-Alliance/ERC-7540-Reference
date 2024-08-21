@@ -24,7 +24,7 @@ contract TimelockedAsyncRedeemTest is Test {
         deal(address(asset), user, initialAssetBalance);
 
         // Deploy the vault
-        vault = new TimelockedAsyncRedeem(asset, "Vault Share", "TEST");
+        vault = new TimelockedAsyncRedeem(3 days, asset, "Vault Share", "TEST");
         shareToken = ERC20(address(vault));
 
         // Deposit assets to the vault

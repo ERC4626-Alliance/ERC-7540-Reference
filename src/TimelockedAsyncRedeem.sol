@@ -14,15 +14,15 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *
  *     This Vault has the following properties:
  *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
- *     - async redemptions are subject to a 3 day delay
- *     - new redemptions restart the 3 day delay even if the prior redemption is claimable.
+ *     - async redemptions are subject to a timelock
+ *     - new redemptions restart the timelock even if the prior redemption is claimable.
  *         This can be resolved by using a more sophisticated algorithm for storing multiple requests.
  *     - the redemption exchange rate is locked in immediately upon request.
  */
 abstract contract BaseTimelockedAsyncRedeem is BaseERC7540, IERC7540Redeem {
     using FixedPointMathLib for uint256;
 
-    uint32 public constant TIMELOCK = 3 days;
+    uint32 public timelock;
 
     uint256 internal _totalPendingRedeemAssets;
     mapping(address => RedemptionRequest) internal _pendingRedemption;
@@ -31,6 +31,14 @@ abstract contract BaseTimelockedAsyncRedeem is BaseERC7540, IERC7540Redeem {
         uint256 assets;
         uint256 shares;
         uint32 claimableTimestamp;
+    }
+
+    constructor(uint32 timelock_) {
+        timelock = timelock_;
+    }
+
+    function setTimelock(uint32 timelock_) public onlyOwner {
+        timelock = timelock_;
     }
 
     function totalAssets() public view virtual override returns (uint256) {
@@ -51,7 +59,7 @@ abstract contract BaseTimelockedAsyncRedeem is BaseERC7540, IERC7540Redeem {
         SafeTransferLib.safeTransferFrom(this, owner, address(this), shares);
 
         _pendingRedemption[controller] =
-            RedemptionRequest({assets: assets, shares: shares, claimableTimestamp: uint32(block.timestamp) + TIMELOCK});
+            RedemptionRequest({assets: assets, shares: shares, claimableTimestamp: uint32(block.timestamp) + timelock});
 
         _totalPendingRedeemAssets += assets;
 
@@ -166,5 +174,8 @@ abstract contract BaseTimelockedAsyncRedeem is BaseERC7540, IERC7540Redeem {
 }
 
 contract TimelockedAsyncRedeem is BaseTimelockedAsyncRedeem {
-    constructor(ERC20 _asset, string memory _name, string memory _symbol) BaseERC7540(_asset, _name, _symbol) {}
+    constructor(uint32 timelock_, ERC20 _asset, string memory _name, string memory _symbol)
+        BaseTimelockedAsyncRedeem(timelock_)
+        BaseERC7540(_asset, _name, _symbol)
+    {}
 }

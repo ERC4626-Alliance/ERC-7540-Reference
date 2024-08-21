@@ -27,7 +27,7 @@ contract TestInterfaceFunctionSelectors is Test {
 
         ERC20 asset = new USDC();
         ControlledAsyncDeposit depositExample = new ControlledAsyncDeposit(asset, "Vault Share", "TEST");
-        TimelockedAsyncRedeem redeemExample = new TimelockedAsyncRedeem(asset, "Vault Share", "TEST");
+        TimelockedAsyncRedeem redeemExample = new TimelockedAsyncRedeem(3 days, asset, "Vault Share", "TEST");
 
         assertTrue(depositExample.supportsInterface(erc7575Vault));
         assertTrue(depositExample.supportsInterface(erc7540Operator));
