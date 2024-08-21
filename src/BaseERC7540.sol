@@ -16,6 +16,7 @@ abstract contract BaseERC7540 is ERC4626, Owned, IERC7540Operator {
     address public share = address(this);
 
     mapping(address => mapping(address => bool)) public isOperator;
+    mapping(address controller => mapping(bytes32 nonce => bool used)) public authorizations;
 
     constructor(ERC20 _asset, string memory _name, string memory _symbol)
         Owned(msg.sender)
@@ -34,6 +35,66 @@ abstract contract BaseERC7540 is ERC4626, Owned, IERC7540Operator {
         require(msg.sender != operator, "ERC7540Vault/cannot-set-self-as-operator");
         isOperator[msg.sender][operator] = approved;
         emit OperatorSet(msg.sender, operator, approved);
+        success = true;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        EIP-7441 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function authorizeOperator(
+        address controller,
+        address operator,
+        bool approved,
+        bytes32 nonce,
+        uint256 deadline,
+        bytes memory signature
+    ) public virtual returns (bool success) {
+        require(controller != operator, "ERC7540Vault/cannot-set-self-as-operator");
+        require(block.timestamp <= deadline, "ERC7540Vault/expired");
+        require(!authorizations[controller][nonce], "ERC7540Vault/authorization-used");
+
+        authorizations[controller][nonce] = true;
+
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            r := mload(add(signature, 0x20))
+            s := mload(add(signature, 0x40))
+            v := byte(0, mload(add(signature, 0x60)))
+        }
+
+        address recoveredAddress = ecrecover(
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            keccak256(
+                                "AuthorizeOperator(address controller,address operator,bool approved,bytes32 nonce,uint256 deadline)"
+                            ),
+                            controller,
+                            operator,
+                            approved,
+                            nonce,
+                            deadline
+                        )
+                    )
+                )
+            ),
+            v,
+            r,
+            s
+        );
+
+        require(recoveredAddress != address(0) && recoveredAddress == controller, "INVALID_SIGNER");
+
+        isOperator[controller][operator] = approved;
+
+        emit OperatorSet(controller, operator, approved);
+
         success = true;
     }
 
