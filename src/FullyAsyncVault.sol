@@ -8,6 +8,15 @@ import {BaseControlledAsyncDeposit} from "src/ControlledAsyncDeposit.sol";
 import {BaseControlledAsyncRedeem} from "src/ControlledAsyncRedeem.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
+// THIS VAULT IS AN UNOPTIMIZED, POTENTIALLY UNSECURE REFERENCE EXAMPLE AND IN NO WAY MEANT TO BE USED IN PRODUCTION
+
+/**
+ * @notice ERC7540 Implementing Asynchronous Deposits and Redemptions
+ *
+ *     This Vault has the following properties:
+ *     - yield for the underlying asset is assumed to be transferred directly into the vault by some arbitrary mechanism
+ *     - async deposits and redemptions are subject to approval by an owner account
+ */
 contract FullyAsyncVault is BaseControlledAsyncDeposit, BaseControlledAsyncRedeem {
     constructor(ERC20 _asset, string memory _name, string memory _symbol)
         BaseControlledAsyncDeposit()
