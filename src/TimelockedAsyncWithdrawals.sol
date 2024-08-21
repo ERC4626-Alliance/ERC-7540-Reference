@@ -24,7 +24,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem {
     uint32 public constant TIMELOCK = 3 days;
 
-    uint256 internal _totalPendingApproxAssets;
+    uint256 internal _totalPendingRedeemAssets;
     mapping(address => RedemptionRequest) internal _pendingRedemption;
 
     struct RedemptionRequest {
@@ -33,8 +33,8 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         uint32 claimableTimestamp;
     }
 
-    function totalAssets() public view override returns (uint256) {
-        return ERC20(asset).balanceOf(address(this)) - _totalPendingApproxAssets;
+    function totalAssets() public view virtual override returns (uint256) {
+        return ERC20(asset).balanceOf(address(this)) - _totalPendingRedeemAssets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         _pendingRedemption[controller] =
             RedemptionRequest({assets: assets, shares: shares, claimableTimestamp: uint32(block.timestamp) + TIMELOCK});
 
-        _totalPendingApproxAssets += assets;
+        _totalPendingRedeemAssets += assets;
 
         emit RedeemRequest(controller, owner, REQUEST_ID, msg.sender, shares);
         return REQUEST_ID;
@@ -79,7 +79,12 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
                         ERC4626 OVERRIDDEN LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function withdraw(uint256 assets, address receiver, address controller) public override returns (uint256 shares) {
+    function withdraw(uint256 assets, address receiver, address controller)
+        public
+        virtual
+        override
+        returns (uint256 shares)
+    {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
         require(assets != 0 && assets == maxWithdraw(controller), "Must claim nonzero maximum");
 
@@ -90,14 +95,19 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         uint256 claimableAssets = request.assets;
 
         delete _pendingRedemption[controller];
-        _totalPendingApproxAssets -= claimableAssets;
+        _totalPendingRedeemAssets -= claimableAssets;
 
         SafeTransferLib.safeTransfer(asset, receiver, claimableAssets);
 
         emit Withdraw(msg.sender, receiver, controller, claimableAssets, shares);
     }
 
-    function redeem(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address controller)
+        public
+        virtual
+        override
+        returns (uint256 assets)
+    {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
         require(shares != 0 && shares == maxRedeem(controller), "Must claim nonzero maximum");
 
@@ -107,14 +117,14 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         assets = request.assets;
 
         delete _pendingRedemption[controller];
-        _totalPendingApproxAssets -= assets;
+        _totalPendingRedeemAssets -= assets;
 
         SafeTransferLib.safeTransfer(asset, receiver, assets);
 
         emit Withdraw(msg.sender, receiver, controller, assets, shares);
     }
 
-    function maxWithdraw(address controller) public view override returns (uint256) {
+    function maxWithdraw(address controller) public view virtual override returns (uint256) {
         RedemptionRequest memory request = _pendingRedemption[controller];
         if (request.claimableTimestamp <= block.timestamp) {
             return request.assets;
@@ -122,7 +132,7 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
         return 0;
     }
 
-    function maxRedeem(address controller) public view override returns (uint256) {
+    function maxRedeem(address controller) public view virtual override returns (uint256) {
         RedemptionRequest memory request = _pendingRedemption[controller];
         if (request.claimableTimestamp <= block.timestamp) {
             return request.shares;
@@ -131,11 +141,11 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
     }
 
     // Preview functions always revert for async flows
-    function previewWithdraw(uint256) public pure override returns (uint256) {
+    function previewWithdraw(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
-    function previewRedeem(uint256) public pure override returns (uint256) {
+    function previewRedeem(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
@@ -143,7 +153,7 @@ abstract contract BaseTimelockedAsyncWithdrawals is BaseERC7540, IERC7540Redeem 
                         ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
         return interfaceId == type(IERC7540Redeem).interfaceId || super.supportsInterface(interfaceId);
     }
 }

@@ -19,7 +19,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
  *         Conversions between claimable assets/shares should be checked for rounding safety.
  */
 abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
-    uint256 internal _totalPendingAssets;
+    uint256 internal _totalPendingDepositAssets;
     mapping(address => PendingDeposit) internal _pendingDeposit;
     mapping(address => ClaimableDeposit) internal _claimableDeposit;
 
@@ -32,10 +32,10 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
         uint256 shares;
     }
 
-    function totalAssets() public view override returns (uint256) {
+    function totalAssets() public view virtual override returns (uint256) {
         // total assets pending redemption must be removed from the reported total assets
         // otherwise pending assets would be treated as yield for outstanding shares
-        return ERC20(asset).balanceOf(address(this)) - _totalPendingAssets;
+        return ERC20(asset).balanceOf(address(this)) - _totalPendingDepositAssets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
         uint256 currentPendingAssets = _pendingDeposit[controller].assets;
         _pendingDeposit[controller] = PendingDeposit(assets + currentPendingAssets);
 
-        _totalPendingAssets += assets;
+        _totalPendingDepositAssets += assets;
 
         emit DepositRequest(controller, owner, REQUEST_ID, msg.sender, assets);
         return REQUEST_ID;
@@ -84,7 +84,7 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
             ClaimableDeposit(request.assets + currentClaimableAssets, shares + currentClaimableShares);
 
         delete _pendingDeposit[controller];
-        _totalPendingAssets -= request.assets;
+        _totalPendingDepositAssets -= request.assets;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -103,6 +103,10 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
         emit Deposit(receiver, controller, assets, shares);
     }
 
+    function deposit(uint256 assets, address receiver) public virtual override returns (uint256 shares) {
+        shares = deposit(assets, receiver, receiver);
+    }
+
     function mint(uint256 shares, address receiver, address controller) public override returns (uint256 assets) {
         require(controller == msg.sender || isOperator[controller][msg.sender], "ERC7540Vault/invalid-caller");
         require(shares != 0 && shares == maxMint(controller), "Must claim nonzero maximum");
@@ -115,20 +119,23 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
         emit Deposit(receiver, controller, assets, shares);
     }
 
-    function maxDeposit(address controller) public view override returns (uint256) {
+    function mint(uint256 shares, address receiver) public virtual override returns (uint256 assets) {
+        assets = mint(shares, receiver, receiver);
+    }
+
+    function maxDeposit(address controller) public view virtual override returns (uint256) {
         return _claimableDeposit[controller].assets;
     }
 
-    function maxMint(address controller) public view override returns (uint256) {
+    function maxMint(address controller) public view virtual override returns (uint256) {
         return _claimableDeposit[controller].shares;
     }
 
-    // preview functions always revert for async flows
-    function previewDeposit(uint256) public pure override returns (uint256) {
+    function previewDeposit(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
-    function previewMint(uint256) public pure override returns (uint256) {
+    function previewMint(uint256) public pure virtual override returns (uint256) {
         revert("ERC7540Vault/async-flow");
     }
 
@@ -136,7 +143,7 @@ abstract contract BaseControlledAsyncDeposits is BaseERC7540, IERC7540Deposit {
                         ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    function supportsInterface(bytes4 interfaceId) public pure override returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public pure virtual override returns (bool) {
         return interfaceId == type(IERC7540Deposit).interfaceId || super.supportsInterface(interfaceId);
     }
 }
